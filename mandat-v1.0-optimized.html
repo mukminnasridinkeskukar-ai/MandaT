@@ -1,0 +1,2716 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MandaT • Dinas Kesehatan Kab. Kutai Kartanegara</title>
+  
+  <!-- Optimized: Use ES modules & defer for non-critical -->
+  <script src="https://cdn.tailwindcss.com" defer></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Lazy load heavy libraries only when needed -->
+  <script>
+    // Dynamic import for Chart.js (only on dashboard)
+    window.loadChart = () => import('https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js');
+    // Dynamic import for jsPDF (only on export)
+    window.loadPDF = () => import('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    // Dynamic import for XLSX (only on export)
+    window.loadExcel = () => import('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+    // Dynamic import for Leaflet (only on distribusi page)
+    window.loadMap = async () => {
+      if (!document.getElementById('leaflet-css')) {
+        const css = document.createElement('link');
+        css.id = 'leaflet-css';
+        css.rel = 'stylesheet';
+        css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(css);
+      }
+      return import('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js');
+    };
+  </script>
+
+  <!-- Supabase Client (load early) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Tailwind Config -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Space+Grotesk:wght@500;600&display=swap');
+    
+    :root {
+      --primary: #0066FF;
+      --accent: #00E5FF;
+      --navy: #0A2540;
+      --glass: rgba(255,255,255,0.08);
+    }
+
+    * { font-family: 'Inter', system-ui, sans-serif; box-sizing: border-box; }
+    .font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; letter-spacing: -0.025em; }
+    
+    /* Glass morphism */
+    .glass {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .glass-dark {
+      background: rgba(10, 37, 64, 0.85);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(0, 102, 255, 0.2);
+    }
+
+    /* Glow effects */
+    .neon-cyan { box-shadow: 0 0 0 1px #00E5FF, 0 0 20px rgba(0, 229, 255, 0.3); }
+    .neon-blue { box-shadow: 0 0 0 1px #0066FF, 0 0 25px rgba(0, 102, 255, 0.4); }
+    .health-gradient { background: linear-gradient(135deg, #0A2540 0%, #0066FF 50%, #00E5FF 100%); }
+
+    .section-header {
+      background: linear-gradient(90deg, #0A2540, #0066FF);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Card animations */
+    .premium-card {
+      transition: transform 0.3s cubic-bezier(0.23, 1.0, 0.32, 1), 
+                  box-shadow 0.3s cubic-bezier(0.23, 1.0, 0.32, 1),
+                  border-color 0.2s;
+    }
+
+    .premium-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    }
+
+    .neon-hover:hover {
+      box-shadow: 0 0 0 1px #00E5FF, 0 10px 15px -3px rgb(0 229 255 / 0.2);
+      border-color: #00E5FF;
+    }
+
+    /* Navigation */
+    .nav-active {
+      background: rgba(0, 102, 255, 0.15);
+      color: #00E5FF;
+      border-left: 3px solid #00E5FF;
+      font-weight: 600;
+    }
+
+    /* ==================== ROLE-BASED VISIBILITY (FIXED) ==================== */
+    .admin-only {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    
+    body[data-user-role="admin"] .admin-only,
+    body[data-user-role="editor"] .admin-only {
+      display: flex !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+    
+    body[data-user-role="admin"] .admin-only.btn,
+    body[data-user-role="admin"] button.admin-only,
+    body[data-user-role="editor"] .admin-only.btn,
+    body[data-user-role="editor"] button.admin-only {
+      display: inline-flex !important;
+    }
+    
+    /* Hide action columns for non-admin */
+    body:not([data-user-role="admin"]):not([data-user-role="editor"]) .admin-action-column {
+      display: none !important;
+    }
+    
+    /* FIXED: Disable inputs properly for non-admin */
+    body:not([data-user-role="admin"]):not([data-user-role="editor"]) .admin-editable-input {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    
+    /* Hide admin-crud elements for non-admin */
+    body:not([data-user-role="admin"]):not([data-user-role="editor"]) .admin-crud {
+      display: none !important;
+    }
+
+    /* Data table styling */
+    .data-table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+    }
+
+    .data-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #0A2540;
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+      text-align: left;
+    }
+
+    .data-table tbody tr {
+      transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    .data-table tbody tr:hover {
+      background: rgba(0, 229, 255, 0.06) !important;
+    }
+
+    .data-table td, .data-table th {
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    /* Custom scrollbar */
+    .modern-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .modern-scroll::-webkit-scrollbar-thumb { background: #0066FF; border-radius: 20px; }
+    .modern-scroll::-webkit-scrollbar-track { background: transparent; }
+
+    /* Active filter button */
+    .active-filter {
+      background: rgba(0, 102, 255, 0.5) !important;
+      border-color: #0066FF !important;
+      color: white !important;
+    }
+
+    /* Modal animation */
+    .modal {
+      animation: modalPop 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    @keyframes modalPop {
+      from { opacity: 0; transform: scale(0.96) translateY(20px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    /* Stat number styling */
+    .stat-number { font-variant-numeric: tabular-nums; }
+
+    /* Sidebar transition */
+    .sidebar { transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1); }
+
+    /* Skeleton loading */
+    .skeleton {
+      background: linear-gradient(90deg, #1e3a5f 25%, #2a4a6f 50%, #1e3a5f 75%);
+      background-size: 200% 100%;
+      animation: skeleton-loading 1.5s infinite;
+    }
+
+    @keyframes skeleton-loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .navy-gradient { background: linear-gradient(180deg, #0A2540, #112b4d); }
+    .status-ideal { background: #10b981; color: white; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; }
+    .status-kurang { background: #ef4444; color: white; padding: 4px 12px; border-radius: 9999px; font-size: 0.75rem; }
+    .table-container { overflow-x: auto; }
+    
+    /* Toast notification */
+    .toast {
+      animation: toastSlide 0.3s ease forwards;
+      backdrop-filter: blur(10px);
+    }
+
+    @keyframes toastSlide {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    .enterprise-shadow {
+      box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3),
+                  0 4px 6px -4px rgb(0 0 0 / 0.3),
+                  0 0 0 1px rgba(0, 102, 255, 0.1);
+    }
+
+    /* Dashboard card hover */
+    .dashboard-card {
+      transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    .dashboard-card:hover {
+      transform: translateY(-6px) scale(1.01);
+      box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4);
+    }
+
+    /* Premium button */
+    .premium-btn {
+      position: relative;
+      overflow: hidden;
+      transition: all 0.2s cubic-bezier(0.23, 1.0, 0.32, 1);
+    }
+
+    .premium-btn:hover {
+      transform: translateY(-1px);
+    }
+
+    /* Landing particles */
+    .landing-particle {
+      position: absolute;
+      border-radius: 50%;
+      background: #00E5FF;
+      box-shadow: 0 0 12px #00E5FF;
+      animation: particle-float 15s infinite linear;
+      pointer-events: none;
+    }
+
+    @keyframes particle-float {
+      from { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      to { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .hide-mobile { display: none !important; }
+      .data-table td, .data-table th { padding: 8px 10px; font-size: 0.8rem; }
+    }
+
+    /* Print styles */
+    @media print {
+      .no-print { display: none !important; }
+      .glass, .glass-dark { background: white; color: black; }
+      body { background: white; color: black; }
+    }
+  </style>
+</head>
+<body class="bg-[#0A2540] text-white overflow-x-hidden" data-user-role="">
+  
+  <!-- ==================== LANDING PAGE ==================== -->
+  <div id="landing" class="fixed inset-0 z-[9999] flex items-center justify-center health-gradient">
+    <div class="absolute inset-0 overflow-hidden">
+      <canvas id="particle-canvas" class="absolute inset-0 w-full h-full opacity-70"></canvas>
+    </div>
+    
+    <div class="relative z-10 text-center px-6 max-w-3xl">
+      <!-- Logo -->
+      <div class="flex justify-center mb-8">
+        <div class="relative">
+          <div class="w-24 h-24 rounded-3xl bg-white/10 backdrop-blur-xl border border-white/30 flex items-center justify-center neon-cyan">
+            <div class="text-center">
+              <i class="fa-solid fa-hospital-user text-5xl text-white"></i>
+              <div class="text-[9px] font-bold tracking-[3px] text-white/70 -mt-1">MANDAT</div>
+            </div>
+          </div>
+          <div class="absolute -inset-1 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-3xl blur-xl opacity-30 -z-10"></div>
+        </div>
+      </div>
+      
+      <h1 class="font-display text-7xl md:text-8xl font-semibold tracking-tighter mb-3">MANDAT</h1>
+      <p class="text-2xl md:text-3xl font-light tracking-wide text-white/90 mb-2">Manajemen<br>Sumber Daya Manusia Kesehatan</p>
+      
+      <div class="flex items-center justify-center gap-x-3 mt-4 flex-wrap">
+        <div class="px-4 py-1.5 rounded-2xl bg-white/10 text-sm font-medium border border-white/20 flex items-center gap-x-2">
+          <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+          <span>VERSI 1.0</span>
+        </div>
+        <div class="px-4 py-1.5 rounded-2xl bg-white/10 text-sm font-medium border border-white/20">SUPABASE EDITION</div>
+      </div>
+      
+      <!-- Loading Progress -->
+      <div class="mt-14 max-w-md mx-auto">
+        <div class="flex items-center justify-between text-xs mb-2 px-1">
+          <div class="text-white/60 font-medium tracking-widest">INITIALIZING SYSTEM</div>
+          <div id="loading-percent" class="font-mono text-cyan-400 font-semibold">00%</div>
+        </div>
+        <div class="h-1.5 bg-white/10 rounded-full overflow-hidden">
+          <div id="loading-bar" class="h-full w-0 bg-gradient-to-r from-cyan-400 via-blue-500 to-cyan-400 transition-all duration-300 rounded-full" 
+               style="box-shadow: 0 0 12px #00E5FF;"></div>
+        </div>
+        <div class="text-[10px] text-white/40 mt-3 tracking-[1.5px]">CONNECTING TO SUPABASE • SECURE CONNECTION</div>
+      </div>
+    </div>
+    
+    <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center">
+      <div class="text-[10px] text-white/40 tracking-[2px]">POWERED BY DINAS KESEHATAN KAB. KUTAI KARTANEGARA</div>
+    </div>
+  </div>
+
+  <!-- ==================== MAIN APPLICATION ==================== -->
+  <div id="app" class="hidden min-h-screen">
+    
+    <!-- TOP NAVIGATION -->
+    <nav class="sticky top-0 z-50 border-b border-white/10 bg-[#0A2540]/95 backdrop-blur-2xl no-print">
+      <div class="max-w-screen-2xl mx-auto">
+        <div class="flex items-center justify-between h-16 px-4 lg:px-6">
+          
+          <!-- Left: Logo + Mobile Menu -->
+          <div class="flex items-center gap-x-4">
+            <button onclick="toggleMobileSidebar()" class="lg:hidden w-10 h-10 flex items-center justify-center text-xl text-white/70 hover:text-white hover:bg-white/10 rounded-2xl transition-colors" aria-label="Menu">
+              <i class="fa-solid fa-bars"></i>
+            </button>
+            
+            <div class="flex items-center gap-x-3">
+              <div class="w-9 h-9 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-inner">
+                <i class="fa-solid fa-hospital-user text-white text-xl"></i>
+              </div>
+              <div>
+                <div class="font-display font-semibold text-xl lg:text-2xl tracking-tighter">MandaT</div>
+                <div class="text-[9px] text-white/40 -mt-1 font-medium tracking-widest">DINKES KUKAR • v1.0</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Right: Search + User -->
+          <div class="flex items-center gap-x-2 lg:gap-x-4">
+            <!-- Global Search -->
+            <div class="hidden md:flex items-center bg-white/5 border border-white/10 rounded-3xl px-4 py-1.5 w-64 lg:w-80 focus-within:w-80 lg:focus-within:w-96 transition-all">
+              <i class="fa-solid fa-search text-white/40 mr-3"></i>
+              <input id="global-search" type="text" placeholder="Cari SDMK, unit, atau pengumuman..." 
+                     class="bg-transparent flex-1 outline-none text-sm placeholder:text-white/40"
+                     onkeyup="handleGlobalSearch(event)">
+            </div>
+            
+            <!-- User Info -->
+            <div class="flex items-center gap-x-2 lg:gap-x-3 pl-2 lg:pl-4 border-l border-white/10">
+              <div onclick="handleTopBarUserClick()" class="flex items-center gap-x-2 lg:gap-x-3 cursor-pointer hover:bg-white/5 px-2 lg:px-3 py-1.5 rounded-3xl transition-colors">
+                <div class="text-right hidden sm:block">
+                  <div id="user-name-display" class="font-semibold text-xs lg:text-sm">Guest User</div>
+                  <div id="user-role-display" class="text-[9px] text-emerald-400 font-medium">VIEWER</div>
+                </div>
+                <div class="w-8 h-8 lg:w-9 lg:h-9 rounded-2xl overflow-hidden border-2 border-white/20 bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
+                  <i class="fa-solid fa-user text-white text-sm"></i>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Notifications -->
+            <button onclick="showNotifications()" class="w-9 h-9 lg:w-10 lg:h-10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 rounded-2xl relative transition-colors" aria-label="Notifikasi">
+              <i class="fa-solid fa-bell text-base lg:text-lg"></i>
+              <div id="notif-badge" class="absolute top-1.5 right-1.5 w-4 h-4 bg-red-500 rounded-full text-[9px] flex items-center justify-center font-bold ring-2 ring-[#0A2540] hidden">0</div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="max-w-screen-2xl mx-auto flex">
+      
+      <!-- SIDEBAR DESKTOP -->
+      <aside id="sidebar" class="w-64 xl:w-72 shrink-0 border-r border-white/10 bg-[#0A2540] h-[calc(100vh-4rem)] overflow-y-auto modern-scroll hidden lg:block pb-8 no-print">
+        <div class="p-4 lg:p-5 pt-6">
+          <div class="px-3 mb-2 text-xs font-semibold tracking-[1.5px] text-white/40">MENU UTAMA</div>
+          
+          <nav class="space-y-1" role="navigation" aria-label="Main menu">
+            <button onclick="navigateTo('dashboard')" class="sidebar-item w-full flex items-center gap-x-3.5 px-4 py-3 rounded-2xl cursor-pointer hover:bg-white/5 text-sm font-medium group transition-colors" id="menu-dashboard">
+              <i class="fa-solid fa-tachometer-alt w-5 text-blue-400 group-hover:scale-110 transition-transform"></i>
+              <span>Dashboard</span>
+            </button>
+            
+            <button onclick="navigateTo('pengumuman')" class="sidebar-item w-full flex items-center gap-x-3.5 px-4 py-3 rounded-2xl cursor-pointer hover:bg-white/5 text-sm font-medium group transition-colors" id="menu-pengumuman">
+              <i class="fa-solid fa-bullhorn w-5 text-amber-400 group-hover:scale-110 transition-transform"></i>
+              <span>Pengumuman</span>
+            </button>
+            
+            <button onclick="navigateTo('renbut')" class="sidebar-item w-full flex items-center gap-x-3.5 px-4 py-3 rounded-2xl cursor-pointer hover:bg-white/5 text-sm font-medium group transition-colors" id="menu-renbut">
+              <i class="fa-solid fa-users-medical w-5 text-emerald-400 group-hover:scale-110 transition-transform"></i>
+              <span>Renbut</span>
+            </button>
+            
+            <button onclick="navigateTo('anjab')" class="sidebar-item w-full flex items-center gap-x-3.5 px-4 py-3 rounded-2xl cursor-pointer hover:bg-white/5 text-sm font-medium group transition-colors" id="menu-anjab">
+              <i class="fa-solid fa-briefcase w-5 text-violet-400 group-hover:scale-110 transition-transform"></i>
+              <span>Anjab-ABK</span>
+            </button>
+            
+            <button onclick="navigateTo('spesialis')" class="sidebar-item w-full flex items-center gap-x-3.5 px-4 py-3 rounded-2xl cursor-pointer hover:bg-white/5 text-sm font-medium group transition-colors" id="menu-spesialis">
+              <i class="fa-solid fa-user-doctor w-5 text-rose-400 group-hover:scale-110 transition-transform"></i>
+              <span>Dokter Spesialis</span>
+              <span class="ml-auto px-2 py-px text-[9px] font-bold bg-rose-500/80 rounded">NEW</span>
+            </button>
+            
+            <button onclick="navigateTo('sdmk')" class="sidebar-item w-full flex items-center gap-x-3.5 px-4 py-3 rounded-2xl cursor-pointer hover:bg-white/5 text-sm font-medium group transition-colors" id="menu-sdmk">
+              <i class="fa-solid fa-hospital-user w-5 text-teal-400 group-hover:scale-110 transition-transform"></i>
+              <span>Data SDMK</span>
+              <span class="ml-auto px-2 py-px text-[9px] font-bold bg-teal-500/80 rounded">NEW</span>
+            </button>
+            
+            <button onclick="navigateTo('rasio')" class="sidebar-item w-full flex items-center gap-x-3.5 px-4 py-3 rounded-2xl cursor-pointer hover:bg-white/5 text-sm font-medium group transition-colors" id="menu-rasio">
+              <i class="fa-solid fa-chart-line w-5 text-cyan-400 group-hover:scale-110 transition-transform"></i>
+              <span>Rasio SDMK</span>
+            </button>
+            
+            <button onclick="navigateTo('distribusi')" class="sidebar-item w-full flex items-center gap-x-3.5 px-4 py-3 rounded-2xl cursor-pointer hover:bg-white/5 text-sm font-medium group transition-colors" id="menu-distribusi">
+              <i class="fa-solid fa-globe w-5 text-orange-400 group-hover:scale-110 transition-transform"></i>
+              <span>Distribusi</span>
+            </button>
+            
+            <button onclick="navigateTo('profil')" class="sidebar-item w-full flex items-center gap-x-3.5 px-4 py-3 rounded-2xl cursor-pointer hover:bg-white/5 text-sm font-medium group transition-colors" id="menu-profil">
+              <i class="fa-solid fa-building w-5 text-pink-400 group-hover:scale-110 transition-transform"></i>
+              <span>Profil Unit Faskes</span>
+            </button>
+            
+            <button onclick="navigateTo('tpm')" class="sidebar-item w-full flex items-center gap-x-3.5 px-4 py-3 rounded-2xl cursor-pointer hover:bg-white/5 text-sm font-medium group transition-colors" id="menu-tpm">
+              <i class="fa-solid fa-stethoscope w-5 text-indigo-400 group-hover:scale-110 transition-transform"></i>
+              <span>Tempat Praktik Mandiri</span>
+            </button>
+          </nav>
+          
+          <div class="my-4 border-t border-white/10"></div>
+          
+          <button onclick="navigateTo('admin')" class="sidebar-item admin-only w-full flex items-center gap-x-3.5 px-4 py-3 rounded-2xl cursor-pointer hover:bg-white/5 text-sm font-medium group border border-white/10 transition-colors" id="menu-admin">
+            <i class="fa-solid fa-shield-halved w-5 text-red-400 group-hover:scale-110 transition-transform"></i>
+            <span>Panel Admin</span>
+            <span class="ml-auto px-2 py-px text-[9px] font-bold bg-red-500/80 rounded">PRO</span>
+          </button>
+        </div>
+        
+        <!-- Connection Status -->
+        <div class="px-4 lg:px-6 py-4 border-t border-white/10 mt-auto text-xs">
+          <div class="flex items-center gap-2 text-white/50">
+            <i class="fa-solid fa-database"></i>
+            <div>
+              <div class="font-medium">Database</div>
+              <div id="db-status" class="text-emerald-400 text-xs font-mono">SUPABASE • CONNECTED</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- MOBILE DRAWER -->
+      <div id="mobile-drawer" onclick="toggleMobileSidebar()" class="lg:hidden fixed inset-0 bg-black/70 z-[60] hidden no-print" role="dialog" aria-modal="true">
+        <div onclick="event.stopImmediatePropagation()" class="w-72 bg-[#0A2540] h-full border-r border-white/10 p-5 overflow-y-auto modern-scroll">
+          <div class="flex justify-between mb-6 px-2">
+            <div class="font-display text-xl font-semibold">MandaT</div>
+            <button onclick="toggleMobileSidebar()" class="text-3xl leading-none text-white/60 hover:text-white" aria-label="Tutup menu">&times;</button>
+          </div>
+          
+          <nav class="space-y-1 text-sm">
+            <a onclick="navigateTo('dashboard');toggleMobileSidebar()" class="flex items-center gap-x-3 px-4 py-3 rounded-2xl hover:bg-white/5 cursor-pointer"><i class="fa-solid fa-tachometer-alt w-5 text-blue-400"></i><span>Dashboard</span></a>
+            <a onclick="navigateTo('pengumuman');toggleMobileSidebar()" class="flex items-center gap-x-3 px-4 py-3 rounded-2xl hover:bg-white/5 cursor-pointer"><i class="fa-solid fa-bullhorn w-5 text-amber-400"></i><span>Pengumuman</span></a>
+            <a onclick="navigateTo('renbut');toggleMobileSidebar()" class="flex items-center gap-x-3 px-4 py-3 rounded-2xl hover:bg-white/5 cursor-pointer"><i class="fa-solid fa-users-medical w-5 text-emerald-400"></i><span>Renbut</span></a>
+            <a onclick="navigateTo('anjab');toggleMobileSidebar()" class="flex items-center gap-x-3 px-4 py-3 rounded-2xl hover:bg-white/5 cursor-pointer"><i class="fa-solid fa-briefcase w-5 text-violet-400"></i><span>Anjab-ABK</span></a>
+            <a onclick="navigateTo('spesialis');toggleMobileSidebar()" class="flex items-center gap-x-3 px-4 py-3 rounded-2xl hover:bg-white/5 cursor-pointer"><i class="fa-solid fa-user-doctor w-5 text-rose-400"></i><span>Dokter Spesialis</span></a>
+            <a onclick="navigateTo('sdmk');toggleMobileSidebar()" class="flex items-center gap-x-3 px-4 py-3 rounded-2xl hover:bg-white/5 cursor-pointer"><i class="fa-solid fa-hospital-user w-5 text-teal-400"></i><span>Data SDMK</span></a>
+            <a onclick="navigateTo('rasio');toggleMobileSidebar()" class="flex items-center gap-x-3 px-4 py-3 rounded-2xl hover:bg-white/5 cursor-pointer"><i class="fa-solid fa-chart-line w-5 text-cyan-400"></i><span>Rasio SDMK</span></a>
+            <a onclick="navigateTo('distribusi');toggleMobileSidebar()" class="flex items-center gap-x-3 px-4 py-3 rounded-2xl hover:bg-white/5 cursor-pointer"><i class="fa-solid fa-globe w-5 text-orange-400"></i><span>Distribusi</span></a>
+            <a onclick="navigateTo('profil');toggleMobileSidebar()" class="flex items-center gap-x-3 px-4 py-3 rounded-2xl hover:bg-white/5 cursor-pointer"><i class="fa-solid fa-building w-5 text-pink-400"></i><span>Profil Unit Faskes</span></a>
+            <a onclick="navigateTo('tpm');toggleMobileSidebar()" class="flex items-center gap-x-3 px-4 py-3 rounded-2xl hover:bg-white/5 cursor-pointer"><i class="fa-solid fa-stethoscope w-5 text-indigo-400"></i><span>Tempat Praktik Mandiri</span></a>
+            <div class="h-px bg-white/10 my-3"></div>
+            <a onclick="navigateTo('admin');toggleMobileSidebar()" class="admin-only flex items-center gap-x-3 px-4 py-3 rounded-2xl hover:bg-white/5 cursor-pointer"><i class="fa-solid fa-shield-halved w-5 text-red-400"></i><span>Panel Admin</span></a>
+          </nav>
+        </div>
+      </div>
+
+      <!-- MAIN CONTENT AREA -->
+      <main class="flex-1 min-w-0 p-4 lg:p-6 xl:p-8 max-w-[1480px] w-full pb-16">
+        
+        <!-- ======== DASHBOARD SECTION ======== -->
+        <section id="section-dashboard" class="dashboard-section">
+          <header class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 lg:mb-8 gap-4">
+            <div>
+              <div class="uppercase tracking-[1.5px] text-xs text-cyan-400 font-semibold mb-1">OVERVIEW</div>
+              <h1 class="text-2xl lg:text-3xl font-semibold tracking-tighter">Dashboard</h1>
+              <p class="text-sm text-white/60 mt-1">Ringkasan data SDMK Kesehatan Kab. Kutai Kartanegara</p>
+            </div>
+            <div class="flex items-center gap-2 text-xs text-white/50">
+              <span>Last sync:</span>
+              <span id="last-sync-time" class="text-emerald-400 font-mono">-</span>
+              <button onclick="refreshDashboard()" class="ml-2 p-2 hover:bg-white/10 rounded-xl transition-colors" title="Refresh">
+                <i class="fa-solid fa-refresh"></i>
+              </button>
+            </div>
+          </header>
+
+          <!-- Stats Cards -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6 lg:mb-8">
+            <article class="glass rounded-2xl p-4 lg:p-5 border border-white/10 dashboard-card">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="text-xs text-white/50 uppercase tracking-wider mb-1">Total SDMK</div>
+                  <div class="text-2xl lg:text-3xl font-bold stat-number text-blue-400" id="stat-total-sdmk">0</div>
+                  <div class="text-xs text-emerald-400 mt-1"><i class="fa-solid fa-arrow-up mr-1"></i><span id="stat-sdmk-change">+0%</span></div>
+                </div>
+                <div class="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                  <i class="fa-solid fa-hospital-user text-blue-400 text-lg lg:text-xl"></i>
+                </div>
+              </div>
+            </article>
+
+            <article class="glass rounded-2xl p-4 lg:p-5 border border-white/10 dashboard-card">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="text-xs text-white/50 uppercase tracking-wider mb-1">Dokter</div>
+                  <div class="text-2xl lg:text-3xl font-bold stat-number text-teal-400" id="stat-dokter">0</div>
+                  <div class="text-xs text-white/40 mt-1">Umum & Spesialis</div>
+                </div>
+                <div class="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-teal-500/20 flex items-center justify-center">
+                  <i class="fa-solid fa-user-doctor text-teal-400 text-lg lg:text-xl"></i>
+                </div>
+              </div>
+            </article>
+
+            <article class="glass rounded-2xl p-4 lg:p-5 border border-white/10 dashboard-card">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="text-xs text-white/50 uppercase tracking-wider mb-1">Perawat/Bidan</div>
+                  <div class="text-2xl lg:text-3xl font-bold stat-number text-pink-400" id="stat-perawat">0</div>
+                  <div class="text-xs text-white/40 mt-1">Tenaga Keperawatan</div>
+                </div>
+                <div class="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-pink-500/20 flex items-center justify-center">
+                  <i class="fa-solid fa-user-nurse text-pink-400 text-lg lg:text-xl"></i>
+                </div>
+              </div>
+            </article>
+
+            <article class="glass rounded-2xl p-4 lg:p-5 border border-white/10 dashboard-card">
+              <div class="flex items-start justify-between">
+                <div>
+                  <div class="text-xs text-white/50 uppercase tracking-wider mb-1">Unit Faskes</div>
+                  <div class="text-2xl lg:text-3xl font-bold stat-number text-emerald-400" id="stat-unit">0</div>
+                  <div class="text-xs text-white/40 mt-1">Puskesmas, RS, Klinik</div>
+                </div>
+                <div class="w-10 h-10 lg:w-12 lg:h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                  <i class="fa-solid fa-building text-emerald-400 text-lg lg:text-xl"></i>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <!-- Charts Row -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
+            <div class="glass rounded-2xl p-5 border border-white/10">
+              <h3 class="font-semibold mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-chart-pie text-cyan-400"></i>
+                Distribusi Jenis Tenaga
+              </h3>
+              <div class="relative h-64">
+                <canvas id="chart-jenis-tenaga"></canvas>
+              </div>
+            </div>
+            
+            <div class="glass rounded-2xl p-5 border border-white/10">
+              <h3 class="font-semibold mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-chart-bar text-emerald-400"></i>
+                SDMK per Unit Kerja
+              </h3>
+              <div class="relative h-64">
+                <canvas id="chart-unit-kerja"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Activity Table -->
+          <div class="glass rounded-2xl border border-white/10 overflow-hidden">
+            <div class="p-4 lg:p-5 border-b border-white/10 flex items-center justify-between">
+              <h3 class="font-semibold flex items-center gap-2">
+                <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
+                Aktivitas Terbaru
+              </h3>
+              <button onclick="navigateTo('admin')" class="text-xs text-cyan-400 hover:text-cyan-300 transition-colors">Lihat Semua →</button>
+            </div>
+            <div class="overflow-x-auto modern-scroll">
+              <table class="data-table min-w-[600px]">
+                <thead>
+                  <tr>
+                    <th>Waktu</th>
+                    <th>User</th>
+                    <th>Aksi</th>
+                    <th>Module</th>
+                    <th>Detail</th>
+                  </tr>
+                </thead>
+                <tbody id="recent-activity-body">
+                  <tr>
+                    <td colspan="5" class="text-center text-white/40 py-8">Memuat data...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ======== PENGUMUMAN SECTION ======== -->
+        <section id="section-pengumuman" class="dashboard-section hidden">
+          <header class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
+            <div>
+              <div class="uppercase tracking-[1.5px] text-xs text-amber-400 font-semibold mb-1">INFORMASI</div>
+              <h1 class="text-2xl lg:text-3xl font-semibold tracking-tighter">Pengumuman</h1>
+            </div>
+            <button onclick="showPengumumanModal()" class="admin-only premium-btn px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-amber-500/30">
+              <i class="fa-solid fa-plus mr-2"></i>Tambah Pengumuman
+            </button>
+          </header>
+
+          <div id="pengumuman-list" class="space-y-4">
+            <!-- Rendered by JS -->
+          </div>
+        </section>
+
+        <!-- ======== RENBUT SECTION ======== -->
+        <section id="section-renbut" class="dashboard-section hidden">
+          <header class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
+            <div>
+              <div class="uppercase tracking-[1.5px] text-xs text-emerald-400 font-semibold mb-1">PERENCANAAN</div>
+              <h1 class="text-2xl lg:text-3xl font-semibold tracking-tighter">Rencana Kebutuhan (Renbut)</h1>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="exportRenbutExcel()" class="px-4 py-2 border border-white/20 rounded-2xl text-sm hover:bg-white/5 transition-colors">
+                <i class="fa-solid fa-file-excel mr-2"></i>Export
+              </button>
+              <button onclick="showRenbutModal()" class="admin-only premium-btn px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-emerald-500/30">
+                <i class="fa-solid fa-plus mr-2"></i>Tambah Data
+              </button>
+            </div>
+          </header>
+
+          <!-- Filters -->
+          <div class="flex flex-wrap gap-3 mb-4">
+            <select id="filter-renbut-tahun" onchange="renderRenbutTable()" class="glass px-4 py-2 rounded-xl border border-white/10 text-sm bg-transparent">
+              <option value="">Semua Tahun</option>
+            </select>
+            <select id="filter-renbut-prioritas" onchange="renderRenbutTable()" class="glass px-4 py-2 rounded-xl border border-white/10 text-sm bg-transparent">
+              <option value="">Semua Prioritas</option>
+              <option value="Tinggi">Tinggi</option>
+              <option value="Sedang">Sedang</option>
+              <option value="Rendah">Rendah</option>
+            </select>
+          </div>
+
+          <!-- Renbut Table -->
+          <div class="glass rounded-2xl border border-white/10 overflow-hidden">
+            <div class="overflow-x-auto modern-scroll max-h-[600px]">
+              <table class="data-table min-w-[900px]">
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>Unit Faskes</th>
+                    <th>Jenis Tenaga</th>
+                    <th class="text-right">Kebutuhan</th>
+                    <th class="text-right">Existing</th>
+                    <th class="text-right">Kekurangan</th>
+                    <th>Prioritas</th>
+                    <th>Tahun</th>
+                    <th class="admin-action-column text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="renbut-tbody">
+                  <tr><td colspan="9" class="text-center text-white/40 py-8">Memuat data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ======== ANJAB-ABK SECTION ======== -->
+        <section id="section-anjab" class="dashboard-section hidden">
+          <header class="mb-6">
+            <div class="uppercase tracking-[1.5px] text-xs text-violet-400 font-semibold mb-1">ANALISIS</div>
+            <h1 class="text-2xl lg:text-3xl font-semibold tracking-tighter">Anjab-ABK</h1>
+          </header>
+
+          <div id="anjab-content" class="glass rounded-2xl border border-white/10 p-6">
+            <p class="text-white/60 text-center py-12">Memuat data Anjab-ABK...</p>
+          </div>
+        </section>
+
+        <!-- ======== SPESIALIS SECTION ======== -->
+        <section id="section-spesialis" class="dashboard-section hidden">
+          <header class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
+            <div>
+              <div class="uppercase tracking-[1.5px] text-xs text-rose-400 font-semibold mb-1">DATA SPESIALIS</div>
+              <h1 class="text-2xl lg:text-3xl font-semibold tracking-tighter">Dokter Spesialis</h1>
+            </div>
+            <button onclick="showSpesialisModal()" class="admin-only premium-btn px-5 py-2.5 bg-gradient-to-r from-rose-500 to-pink-500 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-rose-500/30">
+              <i class="fa-solid fa-plus mr-2"></i>Tambah Spesialis
+            </button>
+          </header>
+
+          <div id="spesialis-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Cards rendered by JS -->
+          </div>
+        </section>
+
+        <!-- ======== DATA SDMK SECTION ======== -->
+        <section id="section-sdmk" class="dashboard-section hidden">
+          <header class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
+            <div>
+              <div class="uppercase tracking-[1.5px] text-xs text-teal-400 font-semibold mb-1">MASTER DATA</div>
+              <h1 class="text-2xl lg:text-3xl font-semibold tracking-tighter">Data SDMK</h1>
+            </div>
+            <div class="flex gap-2 flex-wrap">
+              <input type="text" id="search-sdmk" placeholder="Cari nama, NIP, unit..." 
+                     class="glass px-4 py-2 rounded-xl border border-white/10 text-sm bg-transparent w-48 lg:w-64"
+                     onkeyup="filterSDMK()">
+              <button onclick="showSDMKModal()" class="admin-only premium-btn px-5 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-teal-500/30">
+                <i class="fa-solid fa-plus mr-2"></i>Tambah SDMK
+              </button>
+            </div>
+          </header>
+
+          <!-- SDMK Stats -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            <div class="glass rounded-xl p-3 border border-white/10">
+              <div class="text-[10px] text-white/50 uppercase">Total SDMK</div>
+              <div class="text-xl font-bold text-blue-400 stat-number" id="sdmk-total">0</div>
+            </div>
+            <div class="glass rounded-xl p-3 border border-white/10">
+              <div class="text-[10px] text-white/50 uppercase">Dokter</div>
+              <div class="text-xl font-bold text-teal-400 stat-number" id="sdmk-total-dokter">0</div>
+            </div>
+            <div class="glass rounded-xl p-3 border border-white/10">
+              <div class="text-[10px] text-white/50 uppercase">Perawat/Bidan</div>
+              <div class="text-xl font-bold text-pink-400 stat-number" id="sdmk-total-perawat">0</div>
+            </div>
+            <div class="glass rounded-xl p-3 border border-white/10">
+              <div class="text-[10px] text-white/50 uppercase">Unit Kerja</div>
+              <div class="text-xl font-bold text-emerald-400 stat-number" id="sdmk-total-unit">0</div>
+            </div>
+          </div>
+
+          <!-- SDMK Table -->
+          <div class="glass rounded-2xl border border-white/10 overflow-hidden">
+            <div class="overflow-x-auto modern-scroll max-h-[600px]">
+              <table class="data-table min-w-[1200px]">
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>Nama Lengkap</th>
+                    <th>NIP</th>
+                    <th>Jenis Tenaga</th>
+                    <th>Pendidikan</th>
+                    <th>Unit Kerja</th>
+                    <th>Status</th>
+                    <th>Telepon</th>
+                    <th class="admin-action-column text-center">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="sdmk-tbody">
+                  <tr><td colspan="9" class="text-center text-white/40 py-8">Memuat data...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ======== RASIO SDMK SECTION ======== -->
+        <section id="section-rasio" class="dashboard-section hidden">
+          <header class="mb-6">
+            <div class="uppercase tracking-[1.5px] text-xs text-cyan-400 font-semibold mb-1">ANALISIS RASIO</div>
+            <h1 class="text-2xl lg:text-3xl font-semibold tracking-tighter">Rasio SDMK</h1>
+          </header>
+
+          <div id="rasio-content" class="glass rounded-2xl border border-white/10 p-6">
+            <p class="text-white/60 text-center py-12">Memuat data rasio...</p>
+          </div>
+        </section>
+
+        <!-- ======== DISTRIBUSI SECTION ======== -->
+        <section id="section-distribusi" class="dashboard-section hidden">
+          <header class="mb-6">
+            <div class="uppercase tracking-[1.5px] text-xs text-orange-400 font-semibold mb-1">VISUALISASI</div>
+            <h1 class="text-2xl lg:text-3xl font-semibold tracking-tighter">Distribusi Geografis</h1>
+          </header>
+
+          <div class="glass rounded-2xl border border-white/10 overflow-hidden">
+            <div id="map-container" class="h-[500px] lg:h-[600px] relative">
+              <div class="absolute inset-0 flex items-center justify-center text-white/40">
+                <div class="text-center">
+                  <i class="fa-solid fa-map-location-dot text-5xl mb-4"></i>
+                  <p>Memuat peta...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ======== PROFIL UNIT FASKES SECTION ======== -->
+        <section id="section-profil" class="dashboard-section hidden">
+          <header class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
+            <div>
+              <div class="uppercase tracking-[1.5px] text-xs text-pink-400 font-semibold mb-1">DIRECTORY</div>
+              <h1 class="text-2xl lg:text-3xl font-semibold tracking-tighter">Profil Unit Faskes</h1>
+            </div>
+            <button onclick="showProfilModal()" class="admin-only premium-btn px-5 py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-pink-500/30">
+              <i class="fa-solid fa-plus mr-2"></i>Tambah Unit
+            </button>
+          </header>
+
+          <div id="profil-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Cards rendered by JS -->
+          </div>
+        </section>
+
+        <!-- ======== TPM SECTION ======== -->
+        <section id="section-tpm" class="dashboard-section hidden">
+          <header class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
+            <div>
+              <div class="uppercase tracking-[1.5px] text-xs text-indigo-400 font-semibold mb-1">PRAKTIK MANDIRI</div>
+              <h1 class="text-2xl lg:text-3xl font-semibold tracking-tighter">Tempat Praktik Mandiri (TPM)</h1>
+            </header>
+            <div class="flex gap-2 flex-wrap">
+              <select id="filter-tpm-profesi" onchange="filterTPM()" class="glass px-4 py-2 rounded-xl border border-white/10 text-sm bg-transparent">
+                <option value="">Semua Profesi</option>
+                <option value="Dokter Umum">Dokter Umum</option>
+                <option value="Dokter Gigi">Dokter Gigi</option>
+                <option value="Bidan">Bidan</option>
+                <option value="Perawat">Perawat</option>
+              </select>
+              <button onclick="showTPMModal()" class="admin-only premium-btn px-5 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-2xl font-semibold text-sm shadow-lg shadow-indigo-500/30">
+                <i class="fa-solid fa-plus mr-2"></i>Tambah TPM
+              </button>
+            </div>
+          </header>
+
+          <!-- TPM List -->
+          <div id="tpm-list" class="space-y-3">
+            <!-- Rendered by JS -->
+          </div>
+        </section>
+
+        <!-- ======== ADMIN PANEL ======== -->
+        <section id="section-admin" class="dashboard-section hidden">
+          <header class="flex flex-col lg:flex-row lg:items-center justify-between mb-6 gap-4">
+            <div>
+              <div class="uppercase tracking-[1.5px] text-xs text-red-400 font-semibold mb-1">SECURE AREA</div>
+              <h1 class="text-2xl lg:text-3xl font-semibold tracking-tighter">Panel Admin</h1>
+            </div>
+            <div class="flex items-center gap-3 text-xs flex-wrap">
+              <div class="px-4 py-2 bg-emerald-500/10 border border-emerald-400/40 rounded-2xl text-emerald-400 flex items-center gap-2">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>LOGIN: <strong id="admin-user-name">Admin</strong> (<strong id="admin-user-role">ADMIN</strong>)</span>
+              </div>
+              <button onclick="performLogout()" class="px-5 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-2xl font-semibold hover:from-red-600 hover:to-rose-700 flex items-center gap-2 shadow-lg shadow-red-500/30 transition-all">
+                <i class="fa-solid fa-right-from-bracket"></i> LOGOUT
+              </button>
+            </div>
+          </header>
+
+          <!-- Admin Tabs -->
+          <div class="flex flex-wrap gap-x-1 lg:gap-x-2 mb-4 border-b border-white/10 pb-1 text-sm overflow-x-auto">
+            <button onclick="switchAdminTab(this, 'admin-tab-dashboard')" class="admin-tab active px-4 lg:px-5 py-2 cursor-pointer font-medium border-b-2 border-cyan-400 whitespace-nowrap">Dashboard</button>
+            <button onclick="switchAdminTab(this, 'admin-tab-sdmk')" class="admin-tab px-4 lg:px-5 py-2 cursor-pointer font-medium border-b-2 border-transparent hover:border-white/30 whitespace-nowrap">SDMK</button>
+            <button onclick="switchAdminTab(this, 'admin-tab-pengumuman')" class="admin-tab px-4 lg:px-5 py-2 cursor-pointer font-medium border-b-2 border-transparent hover:border-white/30 whitespace-nowrap">Pengumuman</button>
+            <button onclick="switchAdminTab(this, 'admin-tab-renbut')" class="admin-tab px-4 lg:px-5 py-2 cursor-pointer font-medium border-b-2 border-transparent hover:border-white/30 whitespace-nowrap">Renbut</button>
+            <button onclick="switchAdminTab(this, 'admin-tab-tpm')" class="admin-tab px-4 lg:px-5 py-2 cursor-pointer font-medium border-b-2 border-transparent hover:border-white/30 whitespace-nowrap">TPM</button>
+            <button onclick="switchAdminTab(this, 'admin-tab-rekap')" class="admin-tab px-4 lg:px-5 py-2 cursor-pointer font-medium border-b-2 border-transparent hover:border-white/30 whitespace-nowrap">Rekap</button>
+            <button onclick="switchAdminTab(this, 'admin-tab-users')" class="admin-tab admin-only px-4 lg:px-5 py-2 cursor-pointer font-medium border-b-2 border-transparent hover:border-white/30 whitespace-nowrap">Users</button>
+            <button onclick="switchAdminTab(this, 'admin-tab-logs')" class="admin-tab admin-only px-4 lg:px-5 py-2 cursor-pointer font-medium border-b-2 border-transparent hover:border-white/30 whitespace-nowrap">Logs</button>
+          </div>
+
+          <!-- Admin Tab Contents -->
+          <div id="admin-tab-dashboard" class="admin-pane">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
+              <div class="glass rounded-xl p-4 border border-white/10">
+                <div class="text-xs text-white/50 uppercase mb-1">Total Users</div>
+                <div class="text-2xl font-bold text-blue-400 stat-number" id="admin-stat-users">0</div>
+              </div>
+              <div class="glass rounded-xl p-4 border border-white/10">
+                <div class="text-xs text-white/50 uppercase mb-1">Total Records</div>
+                <div class="text-2xl font-bold text-emerald-400 stat-number" id="admin-stat-records">0</div>
+              </div>
+              <div class="glass rounded-xl p-4 border border-white/10">
+                <div class="text-xs text-white/50 uppercase mb-1">Active Sessions</div>
+                <div class="text-2xl font-bold text-amber-400 stat-number" id="admin-stat-sessions">0</div>
+              </div>
+              <div class="glass rounded-xl p-4 border border-white/10">
+                <div class="text-xs text-white/50 uppercase mb-1">Storage Used</div>
+                <div class="text-2xl font-bold text-purple-400 stat-number" id="admin-stat-storage">0 MB</div>
+              </div>
+            </div>
+            <div class="glass rounded-xl p-6 border border-white/10">
+              <h3 class="font-semibold mb-4">Quick Actions</h3>
+              <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <button onclick="syncAllDataFromServer()" class="p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors text-left">
+                  <i class="fa-solid fa-refresh text-cyan-400 mb-2 block"></i>
+                  <div class="text-sm font-medium">Sync Data</div>
+                  <div class="text-xs text-white/40">Pull latest from server</div>
+                </button>
+                <button onclick="exportAllData()" class="p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors text-left">
+                  <i class="fa-solid fa-download text-emerald-400 mb-2 block"></i>
+                  <div class="text-sm font-medium">Export All</div>
+                  <div class="text-xs text-white/40">Download backup</div>
+                </button>
+                <button onclick="clearCache()" class="p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors text-left">
+                  <i class="fa-solid fa-trash text-red-400 mb-2 block"></i>
+                  <div class="text-sm font-medium">Clear Cache</div>
+                  <div class="text-xs text-white/40">Reset local storage</div>
+                </button>
+                <button onclick="showSystemInfo()" class="p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors text-left">
+                  <i class="fa-solid fa-info-circle text-purple-400 mb-2 block"></i>
+                  <div class="text-sm font-medium">System Info</div>
+                  <div class="text-xs text-white/40">Version & status</div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="admin-tab-sdmk" class="admin-pane hidden">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-semibold">Manage SDMK</h3>
+              <button onclick="showSDMKModal()" class="admin-only px-4 py-2 bg-teal-500 text-sm font-semibold rounded-2xl">+ Tambah</button>
+            </div>
+            <div class="glass rounded-xl border border-white/10 overflow-hidden">
+              <div class="overflow-x-auto modern-scroll max-h-[450px]">
+                <table class="data-table min-w-[1000px]">
+                  <thead>
+                    <tr>
+                      <th>Nama</th>
+                      <th>NIP</th>
+                      <th>Jenis</th>
+                      <th>Unit</th>
+                      <th class="admin-action-column">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-sdmk-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div id="admin-tab-pengumuman" class="admin-pane hidden">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-semibold">Manage Pengumuman</h3>
+              <button onclick="showPengumumanModal()" class="admin-only px-4 py-2 bg-amber-500 text-sm font-semibold rounded-2xl">+ Tambah</button>
+            </div>
+            <div id="admin-pengumuman-list" class="space-y-2"></div>
+          </div>
+
+          <div id="admin-tab-renbut" class="admin-pane hidden">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-semibold">Manage Renbut</h3>
+              <button onclick="showRenbutModal()" class="admin-only px-4 py-2 bg-emerald-500 text-sm font-semibold rounded-2xl">+ Tambah</button>
+            </div>
+            <div id="admin-renbut-list" class="overflow-x-auto modern-scroll max-h-[400px]"></div>
+          </div>
+
+          <div id="admin-tab-tpm" class="admin-pane hidden">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-semibold">Manage TPM</h3>
+              <button onclick="showTPMModal()" class="admin-only px-4 py-2 bg-indigo-500 text-sm font-semibold rounded-2xl">+ Tambah</button>
+            </div>
+            <div id="admin-tpm-list" class="overflow-x-auto modern-scroll max-h-[400px]"></div>
+          </div>
+
+          <div id="admin-tab-rekap" class="admin-pane hidden">
+            <div class="flex gap-2 mb-4">
+              <button onclick="switchRekapType('sdmk')" class="rekap-type-btn active px-4 py-2 bg-cyan-500/20 border border-cyan-500/50 rounded-xl text-sm">Rekap SDMK</button>
+              <button onclick="switchRekapType('spesialis')" class="rekap-type-btn px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm">Rekap Spesialis</button>
+            </div>
+            <div id="rekap-container"></div>
+          </div>
+
+          <div id="admin-tab-users" class="admin-pane hidden">
+            <div class="flex justify-between items-center mb-4">
+              <h3 class="font-semibold">Manage Users</h3>
+              <button onclick="showAddUserModal()" class="admin-only px-4 py-2 bg-red-500 text-sm font-semibold rounded-2xl">+ Tambah User</button>
+            </div>
+            <div id="admin-users-list" class="glass rounded-xl border border-white/10 overflow-hidden">
+              <div class="overflow-x-auto modern-scroll">
+                <table class="data-table min-w-[700px]">
+                  <thead>
+                    <tr>
+                      <th>Username</th>
+                      <th>Nama</th>
+                      <th>Email</th>
+                      <th>Role</th>
+                      <th>Status</th>
+                      <th class="admin-action-column">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-users-tbody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div id="admin-tab-logs" class="admin-pane hidden">
+            <h3 class="font-semibold mb-4">Activity Logs</h3>
+            <div class="glass rounded-xl p-4 border border-white/10 text-xs font-mono max-h-[500px] overflow-auto" id="admin-logs-content">
+              <div class="text-white/40">Loading logs...</div>
+            </div>
+          </div>
+
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ==================== MODALS ==================== -->
+  <div id="modal-backdrop" onclick="closeModal()" class="hidden fixed inset-0 bg-black/80 backdrop-blur-xl z-[10000]" role="dialog" aria-modal="true"></div>
+  <div id="modal" class="hidden fixed inset-0 z-[10001] flex items-center justify-center p-4">
+    <div onclick="event.stopImmediatePropagation()" class="glass-dark w-full max-w-[620px] max-h-[90vh] overflow-y-auto rounded-3xl border border-white/15 shadow-2xl modal" role="document">
+      <header class="px-6 lg:px-7 pt-5 lg:pt-6 pb-4 flex items-center justify-between border-b border-white/10">
+        <h2 id="modal-title" class="font-semibold text-lg lg:text-xl"></h2>
+        <button onclick="closeModal()" class="text-white/50 hover:text-white w-9 h-9 flex items-center justify-center text-2xl leading-none rounded-xl hover:bg-white/10 transition-colors" aria-label="Tutup">&times;</button>
+      </header>
+      <div id="modal-body" class="p-6 lg:p-7 text-sm"></div>
+      <footer id="modal-footer" class="px-6 lg:px-7 py-4 lg:py-5 border-t border-white/10 flex justify-end gap-3"></footer>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-4 lg:bottom-6 right-4 lg:right-6 z-[200] space-y-3" aria-live="polite"></div>
+
+  <!-- ==================== MAIN JAVASCRIPT ==================== -->
+  <script>
+    /**
+     * ============================================================
+     * MANDAT v1.0 - OPTIMIZED CLIENT APPLICATION
+     * Backend: Supabase | Frontend: GitHub Pages compatible
+     * ============================================================
+     */
+
+    // ==================== CONFIGURATION ====================
+    const CONFIG = {
+      APP_NAME: 'MANDAT',
+      VERSION: '1.0',
+      ORG: 'Dinas Kesehatan Kab. Kutai Kartanegara',
+      DEFAULT_PAGE_SIZE: 25,
+      TOAST_DURATION: 3000,
+      DEBOUNCE_MS: 300
+    };
+
+    // State Management
+    const STATE = {
+      currentUser: null,
+      currentSection: 'dashboard',
+      isConnected: false,
+      isLoading: false,
+      cache: {},
+      charts: {}
+    };
+
+    // Local Data Cache (for offline capability)
+    const DATA = {
+      sdmk: [],
+      pengumuman: [],
+      renbut: [],
+      anjab: [],
+      spesialis: [],
+      rasio: [],
+      tpm: [],
+      unit_kerja: [],
+      users: [],
+      rekap_sdmk: [],
+      rekap_spesialis: [],
+      activity_log: []
+    };
+
+    // ==================== INITIALIZATION ====================
+    
+    /**
+     * Initialize application
+     */
+    async function initApp() {
+      console.log(`[MANDAT] Initializing ${CONFIG.APP_NAME} v${CONFIG.VERSION}...`);
+      
+      try {
+        // Initialize Supabase client
+        if (typeof initSupabase === 'function') {
+          STATE.isConnected = initSupabase();
+        }
+        
+        // Check for existing session
+        checkExistingSession();
+        
+        // Start landing animation
+        await runLandingAnimation();
+        
+        // Load initial data
+        await loadInitialData();
+        
+        // Setup event listeners
+        setupEventListeners();
+        
+        console.log('[MANDAT] ✅ Application initialized successfully');
+      } catch (error) {
+        console.error('[MANDAT] ❌ Initialization error:', error);
+        showToast('Gagal menginisialisasi aplikasi', 'error');
+      }
+    }
+
+    /**
+     * Run landing page animation
+     */
+    function runLandingAnimation() {
+      return new Promise((resolve) => {
+        let progress = 0;
+        const bar = document.getElementById('loading-bar');
+        const percent = document.getElementById('loading-percent');
+        
+        const interval = setInterval(() => {
+          progress += Math.random() * 15 + 5;
+          if (progress >= 100) {
+            progress = 100;
+            clearInterval(interval);
+            
+            setTimeout(() => {
+              document.getElementById('landing').style.opacity = '0';
+              document.getElementById('landing').style.transition = 'opacity 0.5s ease';
+              
+              setTimeout(() => {
+                document.getElementById('landing').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+                resolve();
+              }, 500);
+            }, 300);
+          }
+          
+          bar.style.width = `${progress}%`;
+          percent.textContent = `${Math.round(progress)}%`;
+        }, 150);
+      });
+    }
+
+    /**
+     * Check for existing user session
+     */
+    function checkExistingSession() {
+      const savedAuth = localStorage.getItem('simandakes_auth');
+      if (savedAuth) {
+        try {
+          STATE.currentUser = JSON.parse(savedAuth);
+          updateUserDisplay();
+          applyRoleBasedVisibility();
+        } catch (e) {
+          localStorage.removeItem('simandakes_auth');
+        }
+      }
+    }
+
+    /**
+     * Load initial data from Supabase
+     */
+    async function loadInitialData() {
+      showToast('Memuat data...', 'info');
+      
+      try {
+        const results = await Promise.allSettled([
+          callAPI('getDashboard'),
+          callAPI('getPengumuman'),
+          callAPI('getUnitKerja')
+        ]);
+
+        // Process results
+        if (results[0].status === 'fulfilled' && results[0].value.success) {
+          updateDashboardStats(results[0].value.data);
+        }
+        
+        if (results[1].status === 'fulfilled' && results[1].value.success) {
+          DATA.pengumuman = results[1].value.data || [];
+        }
+        
+        if (results[2].status === 'fulfilled' && results[2].value.success) {
+          DATA.unit_kerja = results[2].value.data || [];
+        }
+
+        updateLastSyncTime();
+        STATE.isConnected = true;
+        updateDBStatus(true);
+        
+        showToast('Data berhasil dimuat', 'success');
+      } catch (error) {
+        console.warn('[MANDAT] Using cached/offline mode');
+        showToast('Mode offline - menggunakan data tersimpan', 'warning');
+        updateDBStatus(false);
+      }
+    }
+
+    // ==================== NAVIGATION ====================
+
+    /**
+     * Navigate to section
+     */
+    function navigateTo(section) {
+      // Admin requires login
+      if (section === 'admin') {
+        requireAdminLogin(() => showSection(section));
+        return;
+      }
+      
+      showSection(section);
+    }
+
+    /**
+     * Show section
+     */
+    function showSection(section) {
+      // Hide all sections
+      document.querySelectorAll('.dashboard-section').forEach(s => s.classList.add('hidden'));
+      
+      // Show target section
+      const target = document.getElementById(`section-${section}`);
+      if (target) {
+        target.classList.remove('hidden');
+        STATE.currentSection = section;
+        
+        // Update active menu item
+        document.querySelectorAll('.sidebar-item').forEach(item => {
+          item.classList.remove('nav-active');
+        });
+        const activeMenu = document.getElementById(`menu-${section}`);
+        if (activeMenu) activeMenu.classList.add('nav-active');
+        
+        // Load section data
+        loadSectionData(section);
+      }
+    }
+
+    /**
+     * Load section-specific data
+     */
+    async function loadSectionData(section) {
+      switch (section) {
+        case 'dashboard':
+          await loadDashboardData();
+          break;
+        case 'pengumuman':
+          renderPengumumanList();
+          break;
+        case 'renbut':
+          await loadRenbutData();
+          break;
+        case 'sdmk':
+          await loadSDMKData();
+          break;
+        case 'spesialis':
+          await loadSpesialisData();
+          break;
+        case 'distribusi':
+          await loadMapData();
+          break;
+        case 'profil':
+          renderProfilGrid();
+          break;
+        case 'tpm':
+          await loadTPMData();
+          break;
+        case 'admin':
+          await loadAdminData();
+          break;
+      }
+    }
+
+    // ==================== UI HELPERS ====================
+
+    /**
+     * Show toast notification
+     */
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-500/90 border-emerald-400',
+        error: 'bg-red-500/90 border-red-400',
+        warning: 'bg-amber-500/90 border-amber-400',
+        info: 'bg-blue-500/90 border-blue-400'
+      };
+      
+      const icons = {
+        success: 'fa-circle-check',
+        error: 'fa-circle-exclamation',
+        warning: 'fa-triangle-exclamation',
+        info: 'fa-circle-info'
+      };
+      
+      toast.className = `toast ${colors[type]} border px-4 py-3 rounded-xl text-white text-sm flex items-center gap-3 min-w-[280px] shadow-lg`;
+      toast.innerHTML = `
+        <i class="fa-solid ${icons[type]}"></i>
+        <span class="flex-1">${message}</span>
+        <button onclick="this.parentElement.remove()" class="hover:opacity-70"><i class="fa-solid fa-times"></i></button>
+      `;
+      
+      container.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => toast.remove(), 300);
+      }, CONFIG.TOAST_DURATION);
+    }
+
+    /**
+     * Show modal dialog
+     */
+    function showModal(title, bodyHtml, footerHtml = '') {
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-body').innerHTML = bodyHtml;
+      document.getElementById('modal-footer').innerHTML = footerHtml;
+      document.getElementById('modal-backdrop').classList.remove('hidden');
+      document.getElementById('modal').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    /**
+     * Close modal dialog
+     */
+    function closeModal() {
+      document.getElementById('modal-backdrop').classList.add('hidden');
+      document.getElementById('modal').classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+
+    /**
+     * Update user display in header
+     */
+    function updateUserDisplay() {
+      const user = STATE.currentUser;
+      document.getElementById('user-name-display').textContent = user?.nama || 'Guest User';
+      document.getElementById('user-role-display').textContent = user?.role?.toUpperCase() || 'VIEWER';
+      document.getElementById('admin-user-name').textContent = user?.nama || 'Admin';
+      document.getElementById('admin-user-role').textContent = user?.role?.toUpperCase() || 'ADMIN';
+    }
+
+    /**
+     * Apply role-based visibility
+     */
+    function applyRoleBasedVisibility() {
+      const role = STATE.currentUser?.role || '';
+      document.body.setAttribute('data-user-role', role);
+    }
+
+    /**
+     * Update database status indicator
+     */
+    function updateDBStatus(connected) {
+      const el = document.getElementById('db-status');
+      if (el) {
+        el.textContent = connected ? 'SUPABASE • CONNECTED' : 'OFFLINE MODE';
+        el.className = connected ? 'text-emerald-400 text-xs font-mono' : 'text-amber-400 text-xs font-mono';
+      }
+    }
+
+    /**
+     * Update last sync time
+     */
+    function updateLastSyncTime() {
+      const el = document.getElementById('last-sync-time');
+      if (el) {
+        el.textContent = new Date().toLocaleTimeString('id-ID');
+      }
+    }
+
+    // ==================== MOBILE SIDEBAR ====================
+
+    function toggleMobileSidebar() {
+      const drawer = document.getElementById('mobile-drawer');
+      drawer.classList.toggle('hidden');
+      document.body.style.overflow = drawer.classList.contains('hidden') ? '' : 'hidden';
+    }
+
+    // ==================== AUTHENTICATION ====================
+
+    /**
+     * Require admin login before accessing protected area
+     */
+    function requireAdminLogin(callback) {
+      if (STATE.currentUser && (STATE.currentUser.role === 'admin' || STATE.currentUser.role === 'editor')) {
+        callback();
+        return;
+      }
+      
+      window._pendingAdminCallback = callback;
+      showModal('Login Required', `
+        <div class="space-y-4">
+          <p class="text-white/70">Masukkan kredensial untuk mengakses Panel Admin</p>
+          <div>
+            <label class="text-xs text-white/60">Username</label>
+            <input id="login-user" type="text" class="mt-1 w-full glass px-4 py-2.5 rounded-xl border border-white/10 focus:border-cyan-400 outline-none" autocomplete="username">
+          </div>
+          <div>
+            <label class="text-xs text-white/60">Password</label>
+            <input id="login-pass" type="password" class="mt-1 w-full glass px-4 py-2.5 rounded-xl border border-white/10 focus:border-cyan-400 outline-none" autocomplete="current-password">
+          </div>
+        </div>
+      `, `
+        <button onclick="closeModal()" class="px-5 py-2.5 border border-white/20 rounded-xl hover:bg-white/10 transition-colors">Batal</button>
+        <button onclick="doAdminLogin()" class="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-semibold hover:from-cyan-600 hover:to-blue-600 transition-all">Login</button>
+      `);
+      
+      // Focus input
+      setTimeout(() => document.getElementById('login-user')?.focus(), 100);
+    }
+
+    /**
+     * Perform admin login
+     */
+    async function doAdminLogin() {
+      const username = document.getElementById('login-user')?.value?.trim();
+      const password = document.getElementById('login-pass')?.value;
+      
+      if (!username || !password) {
+        showToast('Username dan password wajib diisi', 'error');
+        return;
+      }
+      
+      showToast('Memproses login...', 'info');
+      
+      const result = await callAPI('login', { username, password });
+      
+      if (result.success) {
+        STATE.currentUser = result.data;
+        localStorage.setItem('simandakes_auth', JSON.stringify(result.data));
+        updateUserDisplay();
+        applyRoleBasedVisibility();
+        closeModal();
+        showToast(`Login berhasil sebagai ${result.data.role.toUpperCase()}`, 'success');
+        logActivity('LOGIN', 'auth', `User ${username} logged in`);
+        
+        if (window._pendingAdminCallback) {
+          const cb = window._pendingAdminCallback;
+          window._pendingAdminCallback = null;
+          cb();
+        }
+      } else {
+        showToast(result.message || 'Login gagal', 'error');
+      }
+    }
+
+    /**
+     * Perform logout
+     */
+    async function performLogout() {
+      if (!confirm('Yakin ingin logout?')) return;
+      
+      logActivity('LOGOUT', 'auth', `User ${STATE.currentUser?.username} logged out`);
+      
+      localStorage.removeItem('simandakes_auth');
+      STATE.currentUser = null;
+      updateUserDisplay();
+      applyRoleBasedVisibility();
+      
+      showToast('Logout berhasil', 'success');
+      navigateTo('dashboard');
+    }
+
+    // ==================== DATA LOADING FUNCTIONS ====================
+
+    /**
+     * Load dashboard data
+     */
+    async function loadDashboardData() {
+      try {
+        const [dashboardRes, activityRes] = await Promise.all([
+          callAPI('getDashboard'),
+          callAPI('getActivityLog')
+        ]);
+        
+        if (dashboardRes.success) {
+          updateDashboardStats(dashboardRes.data);
+        }
+        
+        if (activityRes.success && Array.isArray(activityRes.data)) {
+          renderRecentActivity(activityRes.data.slice(0, 10));
+        }
+        
+        // Load charts lazily
+        loadCharts();
+      } catch (err) {
+        console.error('Dashboard load error:', err);
+      }
+    }
+
+    /**
+     * Update dashboard statistics
+     */
+    function updateDashboardStats(data) {
+      if (!data) return;
+      
+      animateNumber('stat-total-sdmk', data.total_sdmk || 0);
+      animateNumber('stat-dokter', data.total_dokter || 0);
+      animateNumber('stat-perawat', data.total_perawat_bidan || 0);
+      animateNumber('stat-unit', data.total_unit || 0);
+    }
+
+    /**
+     * Animate number counting
+     */
+    function animateNumber(elementId, targetValue) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      
+      const start = parseInt(el.textContent) || 0;
+      const duration = 800;
+      const startTime = performance.now();
+      
+      function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+        
+        el.textContent = Math.round(start + (targetValue - start) * eased).toLocaleString('id-ID');
+        
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        }
+      }
+      
+      requestAnimationFrame(update);
+    }
+
+    /**
+     * Load charts (lazy loaded)
+     */
+    async function loadCharts() {
+      try {
+        const Chart = await window.loadChart();
+        
+        // Destroy existing charts
+        Object.values(STATE.charts).forEach(chart => chart?.destroy());
+        
+        // Chart: Jenis Tenaga Distribution
+        const jenisCtx = document.getElementById('chart-jenis-tenaga')?.getContext('2d');
+        if (jenisCtx) {
+          const jenisData = aggregateByJenisTenaga(DATA.sdmk);
+          STATE.charts.jenis = new Chart(jenisCtx, {
+            type: 'doughnut',
+            data: {
+              labels: Object.keys(jenisData),
+              datasets: [{
+                data: Object.values(jenisData),
+                backgroundColor: ['#0066FF', '#00E5FF', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
+                borderWidth: 0
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  position: 'bottom',
+                  labels: { color: '#fff', padding: 15, font: { size: 11 } }
+                }
+              }
+            }
+          });
+        }
+        
+        // Chart: Unit Kerja
+        const unitCtx = document.getElementById('chart-unit-kerja')?.getContext('2d');
+        if (unitCtx) {
+          const unitData = aggregateByUnitKerja(DATA.sdmk);
+          STATE.charts.unit = new Chart(unitCtx, {
+            type: 'bar',
+            data: {
+              labels: Object.keys(unitData).slice(0, 8), // Top 8
+              datasets: [{
+                label: 'Jumlah SDMK',
+                data: Object.values(unitData).slice(0, 8),
+                backgroundColor: 'rgba(0, 102, 255, 0.7)',
+                borderRadius: 6
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              indexAxis: 'y',
+              plugins: {
+                legend: { display: false }
+              },
+              scales: {
+                x: { 
+                  ticks: { color: 'rgba(255,255,255,0.6)' },
+                  grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                y: { 
+                  ticks: { color: 'rgba(255,255,255,0.8)', font: { size: 11 } },
+                  grid: { display: false }
+                }
+              }
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('Charts not loaded:', err);
+      }
+    }
+
+    /**
+     * Aggregate SDMK by jenis tenaga
+     */
+    function aggregateByJenisTenaga(data) {
+      return (data || []).reduce((acc, item) => {
+        const jenis = item.jenis_tenaga || 'Lainnya';
+        acc[jenis] = (acc[jenis] || 0) + 1;
+        return acc;
+      }, {});
+    }
+
+    /**
+     * Aggregate SDMK by unit kerja
+     */
+    function aggregateByUnitKerja(data) {
+      return (data || []).reduce((acc, item) => {
+        const unit = item.unit_kerja_nama || item.unit_kerja || 'Belum ditugaskan';
+        acc[unit] = (acc[unit] || 0) + 1;
+        return acc;
+      }, {});
+    }
+
+    /**
+     * Render recent activity table
+     */
+    function renderRecentActivity(logs) {
+      const tbody = document.getElementById('recent-activity-body');
+      if (!tbody) return;
+      
+      if (!logs || logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-white/40 py-8">Belum ada aktivitas</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = logs.map(log => `
+        <tr class="hover:bg-white/5">
+          <td class="text-xs text-white/50">${formatDate(log.created_at)}</td>
+          <td>${log.username || '-'}</td>
+          <td><span class="px-2 py-1 rounded-lg text-xs ${
+            log.action === 'LOGIN' ? 'bg-blue-500/20 text-blue-400' :
+            log.action === 'CREATE' ? 'bg-emerald-500/20 text-emerald-400' :
+            log.action === 'UPDATE' ? 'bg-amber-500/20 text-amber-400' :
+            log.action === 'DELETE' ? 'bg-red-500/20 text-red-400' :
+            'bg-gray-500/20 text-gray-400'
+          }">${log.action}</span></td>
+          <td class="capitalize">${log.module || '-'}</td>
+          <td class="text-xs text-white/60 max-w-[200px] truncate">${log.description || '-'}</td>
+        </tr>
+      `).join('');
+    }
+
+    // ==================== PENGUMUMAN MODULE ====================
+
+    async function loadPengumumanData() {
+      const res = await callAPI('getPengumuman');
+      if (res.success) {
+        DATA.pengumuman = res.data || [];
+        renderPengumumanList();
+      }
+    }
+
+    function renderPengumumanList() {
+      const container = document.getElementById('pengumuman-list');
+      if (!container) return;
+      
+      if (DATA.pengumuman.length === 0) {
+        container.innerHTML = '<div class="text-center text-white/40 py-12"><i class="fa-solid fa-bullhorn text-4xl mb-4 block"></i>Belum ada pengumuman</div>';
+        return;
+      }
+      
+      container.innerHTML = DATA.pengumuman.map(item => `
+        <article class="glass rounded-2xl p-5 border border-white/10 premium-card ${item.is_pinned ? 'border-l-4 border-l-amber-400' : ''}">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-2">
+                ${item.is_pinned ? '<span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 text-xs rounded-lg"><i class="fa-solid fa-thumbtack mr-1"></i>Pin</span>' : ''}
+                <span class="px-2 py-0.5 bg-white/10 text-white/60 text-xs rounded-lg">${item.kategori || 'Umum'}</span>
+              </div>
+              <h3 class="font-semibold text-lg mb-2">${item.judul}</h3>
+              <p class="text-sm text-white/70 line-clamp-2">${item.isi || ''}</p>
+              <div class="text-xs text-white/40 mt-3">${formatDate(item.published_at || item.created_at)}</div>
+            </div>
+            <div class="admin-only flex gap-2">
+              <button onclick="editPengumuman('${item.id}')" class="p-2 hover:bg-white/10 rounded-lg transition-colors" title="Edit"><i class="fa-solid fa-pen"></i></button>
+              <button onclick="deletePengumuman('${item.id}')" class="p-2 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    function showPengumumanModal(editId = null) {
+      const isEdit = editId !== null;
+      const item = isEdit ? DATA.pengumuman.find(p => p.id === editId) : null;
+      
+      showModal(isEdit ? 'Edit Pengumuman' : 'Tambah Pengumuman Baru', `
+        <form id="pengumuman-form" class="space-y-4" onsubmit="savePengumuman(event, '${editId || ''}')">
+          <div>
+            <label class="text-xs text-white/60">Judul</label>
+            <input type="text" name="judul" value="${item?.judul || ''}" required class="mt-1 w-full glass px-4 py-2.5 rounded-xl border border-white/10 focus:border-cyan-400 outline-none">
+          </div>
+          <div>
+            <label class="text-xs text-white/60">Isi</label>
+            <textarea name="isi" rows="4" class="mt-1 w-full glass px-4 py-2.5 rounded-xl border border-white/10 focus:border-cyan-400 outline-none resize-none">${item?.isi || ''}</textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-white/60">Kategori</label>
+              <select name="kategori" class="mt-1 w-full glass px-4 py-2.5 rounded-xl border border-white/10 bg-transparent">
+                <option value="umum" ${item?.kategori === 'umum' ? 'selected' : ''}>Umum</option>
+                <option value="penting" ${item?.kategori === 'penting' ? 'selected' : ''}>Penting</option>
+                <option value="darurat" ${item?.kategori === 'darurat' ? 'selected' : ''}>Darurat</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-white/60 flex items-center gap-2">
+                <input type="checkbox" name="is_pinned" ${item?.is_pinned ? 'checked' : ''} class="rounded">
+                Pin pengumuman
+              </label>
+            </div>
+          </div>
+        </form>
+      `, `
+        <button onclick="closeModal()" type="button" class="px-5 py-2.5 border border-white/20 rounded-xl hover:bg-white/10 transition-colors">Batal</button>
+        <button onclick="document.getElementById('pengumuman-form').requestSubmit()" class="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:from-amber-600 hover:to-orange-600 transition-all">Simpan</button>
+      `);
+    }
+
+    async function savePengumuman(event, editId) {
+      event.preventDefault();
+      const form = event.target;
+      const formData = new FormData(form);
+      
+      const data = {
+        judul: formData.get('judul'),
+        isi: formData.get('isi'),
+        kategori: formData.get('kategori'),
+        is_pinned: formData.has('is_pinned'),
+        is_active: true
+      };
+      
+      showToast('Menyimpan...', 'info');
+      const res = await callAPI('savePengumuman', { data, id: editId || null });
+      
+      if (res.success) {
+        showToast('Pengumuman disimpan', 'success');
+        closeModal();
+        await loadPengumumanData();
+        logActivity(editId ? 'UPDATE' : 'CREATE', 'pengumuman', data.judul);
+      } else {
+        showToast(res.message || 'Gagal menyimpan', 'error');
+      }
+    }
+
+    async function deletePengumuman(id) {
+      if (!confirm('Hapus pengumuman ini?')) return;
+      
+      const res = await callAPI('deletePengumuman', { id });
+      if (res.success) {
+        showToast('Pengumuman dihapus', 'success');
+        await loadPengumumanData();
+        logActivity('DELETE', 'pengumuman', id);
+      }
+    }
+
+    // ==================== RENBUT MODULE ====================
+
+    async function loadRenbutData() {
+      const res = await callAPI('getRenbut');
+      if (res.success) {
+        DATA.renbut = res.data || [];
+        populateRenbutFilters();
+        renderRenbutTable();
+      }
+    }
+
+    function populateRenbutFilters() {
+      const tahunSelect = document.getElementById('filter-renbut-tahun');
+      if (!tahunSelect) return;
+      
+      const years = [...new Set(DATA.renbut.map(r => r.tahun))].sort((a, b) => b - a);
+      tahunSelect.innerHTML = '<option value="">Semua Tahun</option>' + 
+        years.map(y => `<option value="${y}">${y}</option>`).join('');
+    }
+
+    function getFilteredRenbut() {
+      const tahun = document.getElementById('filter-renbut-tahun')?.value;
+      const prioritas = document.getElementById('filter-renbut-prioritas')?.value;
+      
+      return DATA.renbut.filter(r => {
+        if (tahun && r.tahun != tahun) return false;
+        if (prioritas && r.prioritas !== prioritas) return false;
+        return true;
+      });
+    }
+
+    function renderRenbutTable() {
+      const tbody = document.getElementById('renbut-tbody');
+      if (!tbody) return;
+      
+      const filtered = getFilteredRenbut();
+      
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-white/40 py-8">Tidak ada data</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = filtered.map((r, i) => `
+        <tr class="hover:bg-white/5">
+          <td>${i + 1}</td>
+          <td class="font-medium">${r.unit_kerja_nama || '-'}</td>
+          <td>${r.jenis_tenaga}</td>
+          <td class="text-right">${r.kebutuhan || 0}</td>
+          <td class="text-right">${r.existing || 0}</td>
+          <td class="text-right font-semibold ${(r.kekurangan || 0) > 0 ? 'text-red-400' : 'text-emerald-400'}">${r.kekurangan || 0}</td>
+          <td><span class="px-2 py-1 rounded-lg text-xs ${
+            r.prioritas === 'Tinggi' ? 'bg-red-500/20 text-red-400' :
+            r.prioritas === 'Sedang' ? 'bg-amber-500/20 text-amber-400' :
+            'bg-emerald-500/20 text-emerald-400'
+          }">${r.prioritas || '-'}</span></td>
+          <td>${r.tahun || '-'}</td>
+          <td class="admin-action-column text-center">
+            <div class="flex justify-center gap-1">
+              <button onclick="showRenbutModal('${r.id}')" class="p-1.5 hover:bg-white/10 rounded-lg" title="Edit"><i class="fa-solid fa-pen text-xs"></i></button>
+              <button onclick="deleteRenbut('${r.id}')" class="p-1.5 hover:bg-red-500/20 text-red-400 rounded-lg" title="Hapus"><i class="fa-solid fa-trash text-xs"></i></button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function showRenbutModal(editId = null) {
+      const isEdit = editId !== null;
+      const r = isEdit ? DATA.renbut.find(x => x.id === editId) : null;
+      
+      showModal(isEdit ? 'Edit Renbut' : 'Tambah Renbut Baru', `
+        <form id="renbut-form" class="space-y-3" onsubmit="saveRenbut(event, '${editId || ''}')">
+          <div>
+            <label class="text-xs text-white/60">Nama Unit Faskes</label>
+            <input type="text" name="unit_kerja_nama" value="${r?.unit_kerja_nama || ''}" required class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10">
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-white/60">Jenis Tenaga</label>
+              <select name="jenis_tenaga" class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10 bg-transparent">
+                <option value="Dokter" ${r?.jenis_tenaga === 'Dokter' ? 'selected' : ''}>Dokter</option>
+                <option value="Perawat" ${r?.jenis_tenaga === 'Perawat' ? 'selected' : ''}>Perawat</option>
+                <option value="Bidan" ${r?.jenis_tenaga === 'Bidan' ? 'selected' : ''}>Bidan</option>
+                <option value="Farmasi" ${r?.jenis_tenaga === 'Farmasi' ? 'selected' : ''}>Farmasi</option>
+                <option value="Kesehatan Lainnya" ${r?.jenis_tenaga === 'Kesehatan Lainnya' ? 'selected' : ''}>Kesehatan Lainnya</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-white/60">Prioritas</label>
+              <select name="prioritas" class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10 bg-transparent">
+                <option value="Tinggi" ${r?.prioritas === 'Tinggi' ? 'selected' : ''}>Tinggi</option>
+                <option value="Sedang" ${r?.prioritas === 'Sedang' || !r ? 'selected' : ''}>Sedang</option>
+                <option value="Rendah" ${r?.prioritas === 'Rendah' ? 'selected' : ''}>Rendah</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="text-xs text-white/60">Kebutuhan</label>
+              <input type="number" name="kebutuhan" value="${r?.kebutuhan || 5}" min="0" class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10">
+            </div>
+            <div>
+              <label class="text-xs text-white/60">Existing</label>
+              <input type="number" name="existing" value="${r?.existing || 3}" min="0" class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10">
+            </div>
+            <div>
+              <label class="text-xs text-white/60">Tahun</label>
+              <input type="number" name="tahun" value="${r?.tahun || new Date().getFullYear()}" min="2020" max="2030" class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10">
+            </div>
+          </div>
+          <div>
+            <label class="text-xs text-white/60">Keterangan</label>
+            <textarea name="keterangan" rows="2" class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10 resize-none">${r?.keterangan || ''}</textarea>
+          </div>
+        </form>
+      `, `
+        <button onclick="closeModal()" type="button" class="px-5 py-2.5 border border-white/20 rounded-xl hover:bg-white/10">Batal</button>
+        <button onclick="document.getElementById('renbut-form').requestSubmit()" class="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-green-500 text-white rounded-xl font-semibold">Simpan</button>
+      `);
+    }
+
+    async function saveRenbut(event, editId) {
+      event.preventDefault();
+      const form = event.target;
+      const formData = new FormData(form);
+      
+      const data = {
+        unit_kerja_nama: formData.get('unit_kerja_nama'),
+        jenis_tenaga: formData.get('jenis_tenaga'),
+        kebutuhan: parseInt(formData.get('kebutuhan')) || 0,
+        existing: parseInt(formData.get('existing')) || 0,
+        prioritas: formData.get('prioritas'),
+        tahun: parseInt(formData.get('tahun')),
+        keterangan: formData.get('keterangan')
+      };
+      
+      showToast('Menyimpan...', 'info');
+      const res = await callAPI('saveRenbut', { data, id: editId || null });
+      
+      if (res.success) {
+        showToast('Data Renbut disimpan', 'success');
+        closeModal();
+        await loadRenbutData();
+        logActivity(editId ? 'UPDATE' : 'CREATE', 'renbut', data.unit_kerja_nama);
+      } else {
+        showToast(res.message || 'Gagal menyimpan', 'error');
+      }
+    }
+
+    async function deleteRenbut(id) {
+      if (!confirm('Hapus data ini?')) return;
+      
+      const res = await callAPI('deleteRenbut', { id });
+      if (res.success) {
+        showToast('Data dihapus', 'success');
+        await loadRenbutData();
+        logActivity('DELETE', 'renbut', id);
+      }
+    }
+
+    // ==================== SDMK MODULE ====================
+
+    async function loadSDMKData() {
+      const res = await callAPI('getSDMKData');
+      if (res.success) {
+        DATA.sdmk = res.data || [];
+        updateSDMKStats();
+        renderSDMKTable(DATA.sdmk);
+      }
+    }
+
+    function updateSDMKStats() {
+      const total = DATA.sdmk.length;
+      const dokter = DATA.sdmk.filter(s => s.jenis_tenaga?.toLowerCase().includes('dokter')).length;
+      const perawat = DATA.sdmk.filter(s => 
+        s.jenis_tenaga?.toLowerCase().includes('perawat') || 
+        s.jenis_tenaga?.toLowerCase().includes('bidan')
+      ).length;
+      const units = new Set(DATA.sdmk.map(s => s.unit_kerja_nama)).size;
+      
+      document.getElementById('sdmk-total').textContent = total.toLocaleString();
+      document.getElementById('sdmk-total-dokter').textContent = dokter.toLocaleString();
+      document.getElementById('sdmk-total-perawat').textContent = perawat.toLocaleString();
+      document.getElementById('sdmk-total-unit').textContent = units.toLocaleString();
+    }
+
+    function filterSDMK() {
+      const search = document.getElementById('search-sdmk')?.value.toLowerCase() || '';
+      const filtered = DATA.sdmk.filter(s => 
+        s.nama_lengkap?.toLowerCase().includes(search) ||
+        s.nip?.toLowerCase().includes(search) ||
+        s.unit_kerja_nama?.toLowerCase().includes(search)
+      );
+      renderSDMKTable(filtered);
+    }
+
+    function renderSDMKTable(data) {
+      const tbody = document.getElementById('sdmk-tbody');
+      if (!tbody) return;
+      
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-white/40 py-8">Tidak ada data SDMK</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = data.map((s, i) => `
+        <tr class="hover:bg-white/5">
+          <td>${i + 1}</td>
+          <td class="font-medium">${s.nama_lengkap || '-'}</td>
+          <td class="font-mono text-xs">${s.nip || '-'}</td>
+          <td>${s.jenis_tenaga || '-'}</td>
+          <td>${s.pendidikan || '-'}</td>
+          <td>${s.unit_kerja_nama || '-'}</td>
+          <td><span class="px-2 py-1 rounded-lg text-xs ${
+            s.status_kepegawaian === 'PNS' ? 'bg-blue-500/20 text-blue-400' :
+            s.status_kepegawaian === 'PPPK' ? 'bg-emerald-500/20 text-emerald-400' :
+            'bg-gray-500/20 text-gray-400'
+          }">${s.status_kepegawaian || '-'}</span></td>
+          <td class="font-mono text-xs">${s.no_telepon || '-'}</td>
+          <td class="admin-action-column text-center">
+            <div class="flex justify-center gap-1">
+              <button onclick="showSDMKModal('${s.id}')" class="p-1.5 hover:bg-white/10 rounded-lg" title="Edit"><i class="fa-solid fa-pen text-xs"></i></button>
+              <button onclick="deleteSDMK('${s.id}')" class="p-1.5 hover:bg-red-500/20 text-red-400 rounded-lg" title="Hapus"><i class="fa-solid fa-trash text-xs"></i></button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function showSDMKModal(editId = null) {
+      const isEdit = editId !== null;
+      const s = isEdit ? DATA.sdmk.find(x => x.id === editId) : null;
+      
+      showModal(isEdit ? 'Edit Data SDMK' : 'Tambah Data SDMK Baru', `
+        <form id="sdmk-form" class="space-y-3" onsubmit="saveSDMK(event, '${editId || ''}')">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-white/60">Nama Lengkap *</label>
+              <input type="text" name="nama_lengkap" value="${s?.nama_lengkap || ''}" required class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10">
+            </div>
+            <div>
+              <label class="text-xs text-white/60">NIP</label>
+              <input type="text" name="nip" value="${s?.nip || ''}" class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-white/60">Jenis Tenaga *</label>
+              <select name="jenis_tenaga" required class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10 bg-transparent">
+                <option value="">Pilih...</option>
+                <option value="Dokter Umum" ${s?.jenis_tenaga === 'Dokter Umum' ? 'selected' : ''}>Dokter Umum</option>
+                <option value="Dokter Gigi" ${s?.jenis_tenaga === 'Dokter Gigi' ? 'selected' : ''}>Dokter Gigi</option>
+                <option value="Perawat" ${s?.jenis_tenaga === 'Perawat' ? 'selected' : ''}>Perawat</option>
+                <option value="Bidan" ${s?.jenis_tenaga === 'Bidan' ? 'selected' : ''}>Bidan</option>
+                <option value="Farmasi" ${s?.jenis_tenaga === 'Farmasi' ? 'selected' : ''}>Farmasi</option>
+                <option value="Kesehatan Masyarakat" ${s?.jenis_tenaga === 'Kesehatan Masyarakat' ? 'selected' : ''}>Kesehatan Masyarakat</option>
+                <option value="Kesehatan Lainnya" ${s?.jenis_tenaga === 'Kesehatan Lainnya' ? 'selected' : ''}>Kesehatan Lainnya</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-white/60">Status Kepegawaian</label>
+              <select name="status_kepegawaian" class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10 bg-transparent">
+                <option value="PNS" ${s?.status_kepegawaian === 'PNS' ? 'selected' : ''}>PNS</option>
+                <option value="PPPK" ${s?.status_kepegawaian === 'PPPK' ? 'selected' : ''}>PPPK</option>
+                <option value="Honorer" ${s?.status_kepegawaian === 'Honorer' ? 'selected' : ''}>Honorer</option>
+                <option value="Kontrak" ${s?.status_kepegawaian === 'Kontrak' ? 'selected' : ''}>Kontrak</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="text-xs text-white/60">Pendidikan Terakhir</label>
+            <input type="text" name="pendidikan" value="${s?.pendidikan || ''}" class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10">
+          </div>
+          <div>
+            <label class="text-xs text-white/60">Unit Kerja</label>
+            <input type="text" name="unit_kerja_nama" value="${s?.unit_kerja_nama || ''}" list="unit-list" class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10">
+            <datalist id="unit-list">
+              ${DATA.unit_kerja.map(u => `<option value="${u.nama_unit}">`).join('')}
+            </datalist>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-white/60">No. Telepon</label>
+              <input type="tel" name="no_telepon" value="${s?.no_telepon || ''}" class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10">
+            </div>
+            <div>
+              <label class="text-xs text-white/60">Alamat</label>
+              <input type="text" name="alamat" value="${s?.alamat || ''}" class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10">
+            </div>
+          </div>
+        </form>
+      `, `
+        <button onclick="closeModal()" type="button" class="px-5 py-2.5 border border-white/20 rounded-xl hover:bg-white/10">Batal</button>
+        <button onclick="document.getElementById('sdmk-form').requestSubmit()" class="px-5 py-2.5 bg-gradient-to-r from-teal-500 to-cyan-500 text-white rounded-xl font-semibold">Simpan</button>
+      `);
+    }
+
+    async function saveSDMK(event, editId) {
+      event.preventDefault();
+      const form = event.target;
+      const formData = new FormData(form);
+      
+      const data = {
+        nama_lengkap: formData.get('nama_lengkap'),
+        nip: formData.get('nip'),
+        jenis_tenaga: formData.get('jenis_tenaga'),
+        pendidikan: formData.get('pendidikan'),
+        status_kepegawaian: formData.get('status_kepegawaian'),
+        unit_kerja_nama: formData.get('unit_kerja_nama'),
+        no_telepon: formData.get('no_telepon'),
+        alamat: formData.get('alamat'),
+        is_active: true
+      };
+      
+      showToast('Menyimpan...', 'info');
+      const res = await callAPI('saveSDMK', { data, id: editId || null });
+      
+      if (res.success) {
+        showToast('Data SDMK disimpan', 'success');
+        closeModal();
+        await loadSDMKData();
+        logActivity(editId ? 'UPDATE' : 'CREATE', 'sdmk', data.nama_lengkap);
+      } else {
+        showToast(res.message || 'Gagal menyimpan', 'error');
+      }
+    }
+
+    async function deleteSDMK(id) {
+      if (!confirm('Hapus data SDMK ini?')) return;
+      
+      const res = await callAPI('deleteSDMK', { id });
+      if (res.success) {
+        showToast('Data dihapus', 'success');
+        await loadSDMKData();
+        logActivity('DELETE', 'sdmk', id);
+      }
+    }
+
+    // ==================== OTHER MODULES (Simplified) ====================
+
+    async function loadSpesialisData() {
+      const res = await callAPI('getSpesialisData');
+      if (res.success) {
+        DATA.spesialis = res.data || [];
+        renderSpesialisGrid();
+      }
+    }
+
+    function renderSpesialisGrid() {
+      const container = document.getElementById('spesialis-grid');
+      if (!container) return;
+      
+      if (!DATA.spesialis.length) {
+        container.innerHTML = '<div class="col-span-3 text-center text-white/40 py-12">Tidak ada data spesialis</div>';
+        return;
+      }
+      
+      container.innerHTML = DATA.spesialis.map(s => `
+        <div class="glass rounded-2xl p-5 border border-white/10 premium-card">
+          <div class="flex items-start justify-between mb-3">
+            <div class="w-12 h-12 rounded-xl bg-rose-500/20 flex items-center justify-center">
+              <i class="fa-solid fa-user-doctor text-rose-400 text-xl"></i>
+            </div>
+            <span class="px-2 py-1 bg-rose-500/20 text-rose-400 text-xs rounded-lg">${s.spesialisasi || '-'}</span>
+          </div>
+          <h3 class="font-semibold text-lg mb-1">${s.nama_lengkap || '-'}</h3>
+          <p class="text-sm text-white/60 mb-3">${s.sub_spesialisasi || ''}</p>
+          <div class="text-xs text-white/40">
+            <div><i class="fa-solid fa-hospital mr-2"></i>${s.unit_kerja_nama || '-'}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function showSpesialisModal() {
+      showToast('Form tambah spesialis akan segera tersedia', 'info');
+    }
+
+    async function loadMapData() {
+      try {
+        const L = await window.loadMap();
+        const mapContainer = document.getElementById('map-container');
+        mapContainer.innerHTML = '<div id="map" class="w-full h-full rounded-2xl"></div>';
+        
+        const map = L.map('map').setView([-0.5, 117], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap'
+        }).addTo(map);
+        
+        // Add markers for each unit
+        DATA.unit_kerja.forEach(unit => {
+          if (unit.latitude && unit.longitude) {
+            L.marker([unit.latitude, unit.longitude])
+              .addTo(map)
+              .bindPopup(`<b>${unit.nama_unit}</b><br>${unit.jenis || ''}`);
+          }
+        });
+      } catch (err) {
+        console.error('Map error:', err);
+        document.getElementById('map-container').innerHTML = `
+          <div class="flex items-center justify-center h-full text-white/40">
+            <div class="text-center"><i class="fa-solid fa-map-location-dot text-5xl mb-4"></i><p>Gagal memuat peta</p></div>
+          </div>`;
+      }
+    }
+
+    function renderProfilGrid() {
+      const container = document.getElementById('profil-grid');
+      if (!container) return;
+      
+      if (!DATA.unit_kerja.length) {
+        container.innerHTML = '<div class="col-span-3 text-center text-white/40 py-12">Tidak ada data unit faskes</div>';
+        return;
+      }
+      
+      container.innerHTML = DATA.unit_kerja.slice(0, 12).map(u => `
+        <div class="glass rounded-2xl p-5 border border-white/10 premium-card">
+          <div class="flex items-start justify-between mb-3">
+            <div class="w-12 h-12 rounded-xl bg-pink-500/20 flex items-center justify-center">
+              <i class="fa-solid fa-building text-pink-400 text-xl"></i>
+            </div>
+            <span class="px-2 py-1 ${u.status === 'aktif' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/20 text-gray-400'} text-xs rounded-lg">${u.status || '-'}</span>
+          </div>
+          <h3 class="font-semibold mb-1">${u.nama_unit || '-'}</h3>
+          <p class="text-sm text-white/60 mb-2">${u.jenis || '-'}</p>
+          <p class="text-xs text-white/40"><i class="fa-solid fa-location-dot mr-1"></i>${u.kecamatan || u.alamat || '-'}</p>
+        </div>
+      `).join('');
+    }
+
+    function showProfilModal() {
+      showToast('Form tambah unit akan segera tersedia', 'info');
+    }
+
+    async function loadTPMData() {
+      const res = await callAPI('getTPMData');
+      if (res.success) {
+        DATA.tpm = res.data || [];
+        renderTPMList();
+      }
+    }
+
+    function filterTPM() {
+      const profesi = document.getElementById('filter-tpm-profesi')?.value;
+      const filtered = profesi ? DATA.tpm.filter(t => t.profesi === profesi) : DATA.tpm;
+      renderTPMList(filtered);
+    }
+
+    function renderTPMList(data = DATA.tpm) {
+      const container = document.getElementById('tpm-list');
+      if (!container) return;
+      
+      if (!data.length) {
+        container.innerHTML = '<div class="text-center text-white/40 py-12">Tidak ada data TPM</div>';
+        return;
+      }
+      
+      container.innerHTML = data.map(t => `
+        <div class="glass rounded-xl p-4 border border-white/10 flex items-center gap-4 hover:bg-white/5 transition-colors">
+          <div class="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-stethoscope text-indigo-400 text-xl"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <h3 class="font-semibold">${t.nama_praktik || t.pemilik_nama || '-'}</h3>
+            <p class="text-sm text-white/60">${t.profesi || '-'} • ${t.alamat || '-'}</p>
+          </div>
+          <div class="text-xs text-white/40 hidden sm:block">
+            <div class="flex items-center gap-1"><i class="fa-solid fa-clock"></i> ${t.jam_operasional || '-'}</div>
+          </div>
+          <div class="admin-only flex gap-1">
+            <button onclick="showTPMDetail('${t.id}')" class="p-2 hover:bg-white/10 rounded-lg"><i class="fa-solid fa-eye"></i></button>
+            <button onclick="deleteTPM('${t.id}')" class="p-2 hover:bg-red-500/20 text-red-400 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function showTPMModal() {
+      showToast('Form tambah TPM akan segera tersedia', 'info');
+    }
+
+    function showTPMDetail(id) {
+      const tpm = DATA.tpm.find(t => t.id === id);
+      if (!tpm) return;
+      
+      showModal(tpm.nama_praktik || 'Detail TPM', `
+        <div class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div><span class="text-white/60">Pemilik:</span><br><b>${tpm.pemilik_nama || '-'}</b></div>
+            <div><span class="text-white/60">Profesi:</span><br><b>${tpm.profesi || '-'}</b></div>
+          </div>
+          <div><span class="text-white/60">Alamat:</span><br>${tpm.alamat || '-'}</div>
+          <div><span class="text-white/60">Jam Operasional:</span><br>${tpm.jam_operasional || '-'}</div>
+          <div><span class="text-white/60">Telepon:</span><br>${tpm.telepon || '-'}</div>
+        </div>
+      `, `<button onclick="closeModal()" class="px-5 py-2.5 bg-white/10 rounded-xl hover:bg-white/20">Tutup</button>`);
+    }
+
+    async function deleteTPM(id) {
+      if (!confirm('Hapus data TPM ini?')) return;
+      
+      const res = await callAPI('deleteTPM', { id });
+      if (res.success) {
+        showToast('TPM dihapus', 'success');
+        await loadTPMData();
+      }
+    }
+
+    // ==================== ADMIN PANEL ====================
+
+    async function loadAdminData() {
+      await Promise.all([
+        loadAdminUsers(),
+        loadAdminLogs()
+      ]);
+    }
+
+    function switchAdminTab(btn, paneId) {
+      // Update tab buttons
+      document.querySelectorAll('.admin-tab').forEach(t => {
+        t.classList.remove('active', 'border-cyan-400');
+        t.classList.add('border-transparent');
+      });
+      btn.classList.add('active', 'border-cyan-400');
+      btn.classList.remove('border-transparent');
+      
+      // Show pane
+      document.querySelectorAll('.admin-pane').forEach(p => p.classList.add('hidden'));
+      document.getElementById(paneId)?.classList.remove('hidden');
+    }
+
+    async function loadAdminUsers() {
+      const res = await callAPI('getUsers');
+      if (res.success) {
+        DATA.users = res.data || [];
+        renderAdminUsersTable();
+        document.getElementById('admin-stat-users').textContent = DATA.users.length;
+      }
+    }
+
+    function renderAdminUsersTable() {
+      const tbody = document.getElementById('admin-users-tbody');
+      if (!tbody) return;
+      
+      tbody.innerHTML = DATA.users.map(u => `
+        <tr class="hover:bg-white/5">
+          <td class="font-mono text-xs">${u.username || '-'}</td>
+          <td>${u.nama_lengkap || '-'}</td>
+          <td class="text-xs">${u.email || '-'}</td>
+          <td><span class="px-2 py-1 rounded-lg text-xs ${
+            u.role === 'admin' ? 'bg-red-500/20 text-red-400' :
+            u.role === 'editor' ? 'bg-amber-500/20 text-amber-400' :
+            'bg-gray-500/20 text-gray-400'
+          }">${u.role || '-'}</span></td>
+          <td><span class="px-2 py-1 rounded-lg text-xs ${u.is_active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}">${u.is_active ? 'Aktif' : 'Non-aktif'}</span></td>
+          <td class="admin-action-column">
+            <button onclick="deleteUser('${u.id}')" class="p-1.5 hover:bg-red-500/20 text-red-400 rounded-lg"><i class="fa-solid fa-trash text-xs"></i></button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadAdminLogs() {
+      const res = await callAPI('getActivityLog');
+      if (res.success) {
+        DATA.activity_log = res.data || [];
+        const container = document.getElementById('admin-logs-content');
+        if (container) {
+          container.innerHTML = DATA.activity_log.slice(0, 50).map(log => 
+            `[${formatDate(log.created_at)}] ${log.username || '-'} - ${log.action}: ${log.module} | ${log.description || ''}`
+          ).join('<br>') || 'Tidak ada log';
+        }
+      }
+    }
+
+    function showAddUserModal() {
+      showModal('Tambah User Baru', `
+        <form id="user-form" class="space-y-3" onsubmit="saveNewUser(event)">
+          <div>
+            <label class="text-xs text-white/60">Username *</label>
+            <input type="text" name="username" required class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10">
+          </div>
+          <div>
+            <label class="text-xs text-white/60">Nama Lengkap *</label>
+            <input type="text" name="nama_lengkap" required class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10">
+          </div>
+          <div>
+            <label class="text-xs text-white/60">Email</label>
+            <input type="email" name="email" class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10">
+          </div>
+          <div>
+            <label class="text-xs text-white/60">Password *</label>
+            <input type="password" name="password" required minlength="6" class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10">
+          </div>
+          <div>
+            <label class="text-xs text-white/60">Role</label>
+            <select name="role" class="mt-1 w-full glass px-4 py-2 rounded-xl border border-white/10 bg-transparent">
+              <option value="viewer">Viewer</option>
+              <option value="editor">Editor</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </form>
+      `, `
+        <button onclick="closeModal()" type="button" class="px-5 py-2.5 border border-white/20 rounded-xl hover:bg-white/10">Batal</button>
+        <button onclick="document.getElementById('user-form').requestSubmit()" class="px-5 py-2.5 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl font-semibold">Simpan</button>
+      `);
+    }
+
+    async function saveNewUser(event) {
+      event.preventDefault();
+      const form = event.target;
+      const formData = new FormData(form);
+      
+      const data = {
+        username: formData.get('username'),
+        password: formData.get('password'), // In production, hash this!
+        nama_lengkap: formData.get('nama_lengkap'),
+        email: formData.get('email'),
+        role: formData.get('role')
+      };
+      
+      const res = await callAPI('saveUser', { data });
+      if (res.success) {
+        showToast('User berhasil dibuat', 'success');
+        closeModal();
+        await loadAdminUsers();
+      } else {
+        showToast(res.message || 'Gagal membuat user', 'error');
+      }
+    }
+
+    async function deleteUser(id) {
+      if (!confirm('Hapus user ini?')) return;
+      
+      const res = await callAPI('deleteUser', { id });
+      if (res.success) {
+        showToast('User dihapus', 'success');
+        await loadAdminUsers();
+      }
+    }
+
+    // ==================== UTILITY FUNCTIONS ====================
+
+    /**
+     * Format date to Indonesian locale
+     */
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      try {
+        return new Date(dateStr).toLocaleString('id-ID', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      } catch {
+        return dateStr;
+      }
+    }
+
+    /**
+     * Debounce function for search inputs
+     */
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    /**
+     * Handle global search
+     */
+    function handleGlobalSearch(event) {
+      if (event.key === 'Enter') {
+        const query = event.target.value.trim();
+        if (query) {
+          showToast(`Mencari: ${query}`, 'info');
+          // Implement global search across modules
+        }
+      }
+    }
+
+    /**
+     * Handle top bar user click
+     */
+    function handleTopBarUserClick() {
+      if (STATE.currentUser) {
+        showModal('Profil User', `
+          <div class="text-center space-y-4">
+            <div class="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center">
+              <i class="fa-solid fa-user text-3xl text-white"></i>
+            </div>
+            <div>
+              <h3 class="font-semibold text-lg">${STATE.currentUser.nama || 'User'}</h3>
+              <p class="text-sm text-white/60">@${STATE.currentUser.username || '-'}</p>
+              <p class="text-xs text-cyan-400 mt-1">${STATE.currentUser.role?.toUpperCase() || '-'}</p>
+            </div>
+          </div>
+        `, `
+          ${STATE.currentUser.role === 'admin' ? `<button onclick="navigateTo('admin');closeModal();" class="px-5 py-2.5 bg-white/10 rounded-xl hover:bg-white/20">Panel Admin</button>` : ''}
+          <button onclick="performLogout();closeModal();" class="px-5 py-2.5 bg-gradient-to-r from-red-500 to-rose-500 text-white rounded-xl font-semibold">Logout</button>
+        `);
+      } else {
+        requireAdminLogin(() => {});
+      }
+    }
+
+    /**
+     * Show notifications panel
+     */
+    function showNotifications() {
+      showToast('Panel notifikasi akan segera tersedia', 'info');
+    }
+
+    /**
+     * Refresh dashboard data
+     */
+    async function refreshDashboard() {
+      showToast('Memuat ulang data...', 'info');
+      await loadInitialData();
+      if (STATE.currentSection === 'dashboard') {
+        await loadDashboardData();
+      }
+    }
+
+    /**
+     * Sync all data from server
+     */
+    async function syncAllDataFromServer() {
+      showToast('Sinkronisasi data...', 'info');
+      await loadInitialData();
+      showToast('Data berhasil disinkronkan', 'success');
+    }
+
+    /**
+     * Export all data
+     */
+    async function exportAllData() {
+      try {
+        const ExcelJS = await window.loadExcel();
+        const allData = {
+          sdmk: DATA.sdmk,
+          pengumuman: DATA.pengumuman,
+          renbut: DATA.renbut,
+          unit_kerja: DATA.unit_kerja,
+          tpm: DATA.tpm
+        };
+        
+        // Create workbook and download
+        const wb = ExcelJS.utils.book_new();
+        Object.entries(allData).forEach(([key, value]) => {
+          if (value.length) {
+            const ws = ExcelJS.utils.json_to_sheet(value);
+            ExcelJS.utils.book_append_sheet(wb, ws, key);
+          }
+        });
+        
+        ExcelJS.writeFile(wb, `mandat-export-${new Date().toISOString().split('T')[0]}.xlsx`);
+        showToast('Data berhasil diekspor', 'success');
+        logActivity('EXPORT', 'system', 'Export all data');
+      } catch (err) {
+        showToast('Gagal mengekspor data', 'error');
+      }
+    }
+
+    /**
+     * Clear local cache
+     */
+    function clearCache() {
+      if (!confirm('Hapus semua data tersimpan secara lokal?')) return;
+      
+      localStorage.clear();
+      Object.keys(DATA).forEach(key => {
+        if (Array.isArray(DATA[key])) DATA[key] = [];
+      });
+      
+      showToast('Cache berhasil dibersihkan', 'success');
+    }
+
+    /**
+     * Show system info
+     */
+    function showSystemInfo() {
+      showModal('Informasi Sistem', `
+        <div class="space-y-3 text-sm">
+          <div class="flex justify-between"><span>Aplikasi</span><span class="font-semibold">${CONFIG.APP_NAME}</span></div>
+          <div class="flex justify-between"><span>Versi</span><span class="font-semibold">v${CONFIG.VERSION}</span></div>
+          <div class="flex justify-between"><span>Organisasi</span><span class="font-semibold">${CONFIG.ORG}</span></div>
+          <div class="flex justify-between"><span>Status Koneksi</span><span class="font-semibold ${STATE.isConnected ? 'text-emerald-400' : 'text-amber-400'}">${STATE.isConnected ? 'Terhubung' : 'Offline'}</span></div>
+          <div class="flex justify-between"><span>User Aktif</span><span class="font-semibold">${STATE.currentUser?.nama || 'Guest'}</span></div>
+          <div class="flex justify-between"><span>Role</span><span class="font-semibold">${STATE.currentUser?.role || '-'}</span></div>
+        </div>
+      `, `<button onclick="closeModal()" class="px-5 py-2.5 bg-white/10 rounded-xl hover:bg-white/20">Tutup</button>`);
+    }
+
+    /**
+     * Log activity
+     */
+    async function logActivity(action, module, description = '') {
+      try {
+        await callAPI('logActivity', { action, module, description });
+      } catch (e) {
+        console.warn('Failed to log activity:', e);
+      }
+    }
+
+    // ==================== EVENT LISTENERS ====================
+
+    function setupEventListeners() {
+      // Keyboard shortcuts
+      document.addEventListener('keydown', (e) => {
+        // Escape to close modal
+        if (e.key === 'Escape') closeModal();
+        // Ctrl+K for global search
+        if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+          e.preventDefault();
+          document.getElementById('global-search')?.focus();
+        }
+      });
+
+      // Close mobile drawer on resize
+      window.addEventListener('resize', () => {
+        if (window.innerWidth >= 1024) {
+          document.getElementById('mobile-drawer')?.classList.add('hidden');
+          document.body.style.overflow = '';
+        }
+      });
+    }
+
+    // ==================== PARTICLE ANIMATION (Landing) ====================
+
+    function initParticles() {
+      const canvas = document.getElementById('particle-canvas');
+      if (!canvas) return;
+      
+      const ctx = canvas.getContext('2d');
+      let particles = [];
+      
+      function resize() {
+        canvas.width = canvas.offsetWidth;
+        canvas.height = canvas.offsetHeight;
+      }
+      
+      resize();
+      window.addEventListener('resize', resize);
+      
+      // Create particles
+      for (let i = 0; i < 30; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          radius: Math.random() * 2 + 1,
+          speedX: (Math.random() - 0.5) * 0.5,
+          speedY: (Math.random() - 0.5) * 0.5,
+          opacity: Math.random() * 0.5 + 0.2
+        });
+      }
+      
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        particles.forEach(p => {
+          p.x += p.speedX;
+          p.y += p.speedY;
+          
+          if (p.x < 0 || p.x > canvas.width) p.speedX *= -1;
+          if (p.y < 0 || p.y > canvas.height) p.speedY *= -1;
+          
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(0, 229, 255, ${p.opacity})`;
+          ctx.fill();
+        });
+        
+        requestAnimationFrame(animate);
+      }
+      
+      animate();
+    }
+
+    // ==================== INITIALIZE ON LOAD ====================
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initParticles();
+      initApp();
+    });
+
+    // Expose for debugging
+    window.MANDAT = {
+      CONFIG,
+      STATE,
+      DATA,
+      navigateTo,
+      showToast,
+      refreshDashboard
+    };
+
+    console.log(`
+    %c╔══════════════════════════════════════╗
+    %c║   MANDAT v${CONFIG.VERSION} - Supabase Edition   ║
+    %c║   ${CONFIG.ORG}  ║
+    %c╚══════════════════════════════════════╝
+    `, 'color: #00E5FF; font-weight: bold;', 'color: #0066FF;', 'color: #888;', 'color: #00E5FF; font-weight: bold;');
+  </script>
+</body>
+</html>
