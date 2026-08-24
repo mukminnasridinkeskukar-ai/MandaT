@@ -1066,20 +1066,20 @@ async function renderRenbut(isAdmin) {
         ['Unit Kerja', 'Jenis', 'Kebutuhan', 'Existing', 'Kekurangan', 'Prioritas', 'Tahun', 'Keterangan'], canCreate, canEdit, canDelete);
 }
 
-// Anjab-ABK - Enhanced with Popup Detail View
+// Anjab-ABK - Book Card Style with Popup Detail
 async function renderAnjabAbk(isAdmin) {
     const data = await fetchdata('anjab_abk');
     const canEdit = isAdmin && hasPermission('anjab-abk', 'edit');
     const canDelete = isAdmin && hasPermission('anjab-abk', 'delete');
     const canCreate = isAdmin && hasPermission('anjab-abk', 'create');
     
-    // Public view - with clickable cards that open popup
+    // Public view - Book card style
     if (!isAdmin || (!canEdit && !canCreate)) {
         return `
             <div class="view-container">
                 <div class="view-header">
-                    <h2><i class="fas fa-file-alt" style="color: var(--secondary);"></i> Analisis Jabatan & Beban Kerja (Anjab-ABK)</h2>
-                    <p>Data Analisis Jabatan dan Analisis Beban Kerja. Klik kartu untuk melihat detail.</p>
+                    <h2><i class="fas fa-file-alt" style="color: var(--secondary);"></i> Analisis Jabatan & Beban Kerja</h2>
+                    <p>Data Anjab-ABK. Klik kartu buku untuk melihat detail.</p>
                 </div>
                 
                 ${data.length === 0 ? `
@@ -1089,40 +1089,57 @@ async function renderAnjabAbk(isAdmin) {
                         <p>Data Anjab-ABK belum tersedia</p>
                     </div>
                 ` : `
-                    <div class="anjab-grid-5col">
-                        ${data.map((item, i) => `
-                            <div class="stat-card ${cardColors[i % cardColors.length]} anjab-card-compact" 
-                                 onclick="showAnjabDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})"
-                                 title="${item.jabatan} - ${item.unit}">
-                                <div class="stat-icon-compact"><i class="fas fa-file-alt"></i></div>
-                                <div class="stat-info-compact">
-                                    <h4>${item.jabatan || 'N/A'}</h4>
-                                    <small><i class="fas fa-hospital"></i> ${item.unit || '-'}</small>
-                                    <div class="anjab-metrics">
-                                        <span class="metric-badge bg-blue">B:${item.beban || 0}</span>
-                                        <span class="metric-badge bg-green">K:${item.kebutuhan || 0}</span>
-                                        <span class="metric-badge bg-orange">E:${item.existing || 0}</span>
-                                        <span class="metric-badge bg-red">G:${item.gap || 0}</span>
+                    <div class="book-grid">
+                        ${data.map((item, i) => {
+                            const colors = ['book-blue', 'book-green', 'book-orange', 'book-purple', 'book-teal', 'book-red'];
+                            const colorClass = colors[i % colors.length];
+                            return `
+                            <div class="book-card ${colorClass}" onclick="showAnjabDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                <div class="book-spine"></div>
+                                <div class="book-cover">
+                                    <div class="book-title-area">
+                                        <i class="fas fa-file-alt book-icon"></i>
+                                        <h4 class="book-title">${item.jabatan || 'N/A'}</h4>
+                                    </div>
+                                    <div class="book-info">
+                                        <span class="book-unit"><i class="fas fa-hospital"></i> ${item.unit || '-'}</span>
+                                    </div>
+                                    <div class="book-metrics">
+                                        <div class="book-stat">
+                                            <span class="stat-label">Beban</span>
+                                            <span class="stat-value">${item.beban || 0}</span>
+                                        </div>
+                                        <div class="book-stat">
+                                            <span class="stat-label">Kebutuhan</span>
+                                            <span class="stat-value">${item.kebutuhan || 0}</span>
+                                        </div>
+                                        <div class="book-stat">
+                                            <span class="stat-label">Existing</span>
+                                            <span class="stat-value">${item.existing || 0}</span>
+                                        </div>
+                                        <div class="book-stat highlight">
+                                            <span class="stat-label">Gap</span>
+                                            <span class="stat-value">${item.gap || 0}</span>
+                                        </div>
+                                    </div>
+                                    <div class="book-footer">
+                                        <i class="fas fa-eye"></i> Lihat Detail
                                     </div>
                                 </div>
                             </div>
-                        `).join('')}
+                        `}).join('')}
                     </div>
                 `}
             </div>
             
-            <!-- Popup Modal for Detail View -->
+            <!-- Popup Modal -->
             <div id="anjabPopupModal" class="popup-overlay" onclick="closeAnjabPopup(event)" style="display: none;">
-                <div class="popup-content" onclick="event.stopPropagation()">
+                <div class="popup-content book-popup" onclick="event.stopPropagation()">
                     <div class="popup-header">
                         <h3><i class="fas fa-file-alt"></i> Detail Anjab-ABK</h3>
-                        <button type="button" class="popup-close-btn" onclick="closeAnjabPopup()">
-                            <i class="fas fa-times"></i>
-                        </button>
+                        <button type="button" class="popup-close-btn" onclick="closeAnjabPopup()"><i class="fas fa-times"></i></button>
                     </div>
-                    <div id="anjabPopupBody" class="popup-body">
-                        <!-- Content will be injected here -->
-                    </div>
+                    <div id="anjabPopupBody" class="popup-body"></div>
                 </div>
             </div>
         `;
@@ -1133,51 +1150,57 @@ async function renderAnjabAbk(isAdmin) {
         ['Jabatan', 'Unit', 'Beban', 'Kebutuhan', 'Existing', 'Gap', 'Dokumen'], canCreate, canEdit, canDelete);
 }
 
-// Function to show Anjab detail in popup
+// Function to show Anjab detail in simple popup
 function showAnjabDetail(item) {
     const modal = document.getElementById('anjabPopupModal');
     const body = document.getElementById('anjabPopupBody');
     
     body.innerHTML = `
-        <div class="detail-grid">
-            <div class="detail-item">
-                <label><i class="fas fa-briefcase"></i> Jabatan</label>
-                <value>${item.jabatan || '-'}</value>
+        <div class="book-detail">
+            <div class="book-detail-header">
+                <div class="detail-icon-bg">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+                <div>
+                    <h3>${item.jabatan || 'N/A'}</h3>
+                    <p>${item.unit || '-'}</p>
+                </div>
             </div>
-            <div class="detail-item">
-                <label><i class="fas fa-hospital"></i> Unit Kerja</label>
-                <value>${item.unit || '-'}</value>
+            
+            <div class="book-detail-grid">
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-weight-hanging"></i> Beban Kerja</span>
+                    <span class="detail-value badge-blue">${item.beban || 0}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-users"></i> Kebutuhan</span>
+                    <span class="detail-value badge-green">${item.kebutuhan || 0}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-user-check"></i> Existing</span>
+                    <span class="detail-value badge-orange">${item.existing || 0}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-exclamation-triangle"></i> Gap</span>
+                    <span class="detail-value badge-red">${item.gap || 0}</span>
+                </div>
             </div>
-            <div class="detail-item">
-                <label><i class="fas fa-weight-hanging"></i> Beban Kerja</label>
-                <value><span class="badge badge-info">${item.beban || 0}</span></value>
+            
+            <div class="document-ref">
+                <i class="fas fa-file-contract"></i>
+                <div>
+                    <strong>Dokumen Referensi</strong>
+                    <p>${item.dokumen || 'Tidak ada dokumen'}</p>
+                </div>
             </div>
-            <div class="detail-item">
-                <label><i class="fas fa-users"></i> Kebutuhan</label>
-                <value><span class="badge badge-success">${item.kebutuhan || 0}</span></value>
+            
+            <div class="analysis-box ${item.gap > 0 ? 'warning' : 'success'}">
+                <i class="fas fa-${item.gap > 0 ? 'exclamation-circle' : 'check-circle'}"></i>
+                <p>${item.gap > 0 ? 
+                    `Terdapat kekurangan <strong>${item.gap}</strong> tenaga untuk jabatan ini.` :
+                    `Jumlah tenaga sudah memenuhi kebutuhan.`
+                }</p>
             </div>
-            <div class="detail-item">
-                <label><i class="fas fa-user-check"></i> Existing</label>
-                <value><span class="badge badge-warning">${item.existing || 0}</span></value>
-            </div>
-            <div class="detail-item">
-                <label><i class="fas fa-exclamation-triangle"></i> Gap</label>
-                <value><span class="badge badge-danger">${item.gap || 0}</span></value>
-            </div>
-            <div class="detail-item full-width">
-                <label><i class="fas fa-file-contract"></i> Dokumen Referensi</label>
-                <value>${item.dokumen || '-'}</value>
-            </div>
-        </div>
-        
-        <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 10px;">
-            <h4 style="margin-bottom: 10px; color: var(--primary);"><i class="fas fa-chart-bar"></i> Analisis</h4>
-            <p style="color: var(--text-secondary);">
-                ${item.gap > 0 ? 
-                    `<i class="fas fa-exclamation-circle" style="color: var(--danger);"></i> Terdapat kekurangan <strong>${item.gap}</strong> tenaga untuk jabatan <strong>${item.jabatan}</strong> di ${item.unit}.` :
-                    `<i class="fas fa-check-circle" style="color: var(--success);"></i> Jumlah tenaga sudah memenuhi kebutuhan untuk jabatan ${item.jabatan}.`
-                }
-            </p>
         </div>
     `;
     
@@ -1192,20 +1215,20 @@ function closeAnjabPopup(event) {
     setTimeout(() => modal.style.display = 'none', 300);
 }
 
-// Bezetting - Enhanced with Popup Detail View
+// Bezetting - Book Card Style with Popup Detail
 async function renderBezetting(isAdmin) {
     const data = await fetchdata('bezetting');
     const canEdit = isAdmin && hasPermission('bezetting', 'edit');
     const canDelete = isAdmin && hasPermission('bezetting', 'delete');
     const canCreate = isAdmin && hasPermission('bezetting', 'create');
     
-    // Public view - with clickable cards that open popup
+    // Public view - Book card style
     if (!isAdmin || (!canEdit && !canCreate)) {
         return `
             <div class="view-container">
                 <div class="view-header">
                     <h2><i class="fas fa-users-cog" style="color: var(--secondary);"></i> Data Bezetting</h2>
-                    <p>Dokumen bezetting penempatan tenaga kesehatan. Klik kartu untuk melihat detail dan mengunduh.</p>
+                    <p>Dokumen bezetting penempatan tenaga kesehatan. Klik kartu buku untuk melihat detail.</p>
                 </div>
                 
                 ${data.length === 0 ? `
@@ -1215,42 +1238,45 @@ async function renderBezetting(isAdmin) {
                         <p>Data Bezetting belum tersedia</p>
                     </div>
                 ` : `
-                    <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));">
-                        ${data.map((item, i) => `
-                            <div class="stat-card ${cardColors[i % cardColors.length]} bezetting-card" 
-                                 onclick="showBezettingDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})"
-                                 style="cursor: pointer; transition: all 0.3s ease;"
-                                 onmouseenter="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'"
-                                 onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow=''">
-                                <div class="stat-icon"><i class="fas fa-file-pdf"></i></div>
-                                <div class="stat-info">
-                                    <h3>${item.unit_kerja || 'N/A'}</h3>
-                                    <p><i class="fas fa-calendar-alt"></i> Tahun Update: ${item.updated_tahun || '-'}</p>
-                                    <div style="margin-top: 10px;">
-                                        <span class="badge badge-primary"><i class="fas fa-file-download"></i> File Tersedia</span>
+                    <div class="book-grid">
+                        ${data.map((item, i) => {
+                            const colors = ['book-red', 'book-maroon', 'book-brown', 'book-indigo', 'book-cyan'];
+                            const colorClass = colors[i % colors.length];
+                            return `
+                            <div class="book-card ${colorClass}" onclick="showBezettingDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                <div class="book-spine"></div>
+                                <div class="book-cover">
+                                    <div class="book-title-area">
+                                        <i class="fas fa-file-pdf book-icon"></i>
+                                        <h4 class="book-title">${item.unit_kerja || 'N/A'}</h4>
+                                    </div>
+                                    <div class="book-info">
+                                        <span class="book-unit"><i class="fas fa-calendar-alt"></i> Tahun: ${item.updated_tahun || '-'}</span>
+                                    </div>
+                                    <div class="book-file-status">
+                                        ${item.download_bazetting ? 
+                                            '<span class="file-available"><i class="fas fa-check-circle"></i> File Tersedia</span>' :
+                                            '<span class="file-unavailable"><i class="fas fa-times-circle"></i> Belum Ada File'
+                                        }
+                                    </div>
+                                    <div class="book-footer">
+                                        <i class="fas fa-eye"></i> Lihat Detail
                                     </div>
                                 </div>
-                                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2); text-align: center;">
-                                    <small style="color: rgba(255,255,255,0.8);"><i class="fas fa-eye"></i> Klik untuk detail & unduh</small>
-                                </div>
                             </div>
-                        `).join('')}
+                        `}).join('')}
                     </div>
                 `}
             </div>
             
-            <!-- Popup Modal for Detail View -->
+            <!-- Popup Modal -->
             <div id="bezettingPopupModal" class="popup-overlay" onclick="closeBezettingPopup(event)" style="display: none;">
-                <div class="popup-content" onclick="event.stopPropagation()">
+                <div class="popup-content book-popup" onclick="event.stopPropagation()">
                     <div class="popup-header">
                         <h3><i class="fas fa-users-cog"></i> Detail Bezetting</h3>
-                        <button type="button" class="popup-close-btn" onclick="closeBezettingPopup()">
-                            <i class="fas fa-times"></i>
-                        </button>
+                        <button type="button" class="popup-close-btn" onclick="closeBezettingPopup()"><i class="fas fa-times"></i></button>
                     </div>
-                    <div id="bezettingPopupBody" class="popup-body">
-                        <!-- Content will be injected here -->
-                    </div>
+                    <div id="bezettingPopupBody" class="popup-body"></div>
                 </div>
             </div>
         `;
@@ -1261,76 +1287,61 @@ async function renderBezetting(isAdmin) {
         ['Unit Kerja', 'Download File', 'Tahun Update'], canCreate, canEdit, canDelete);
 }
 
-// Function to show Bezetting detail in popup with real download
+// Function to show Bezetting detail in simple popup
 function showBezettingDetail(item) {
     const modal = document.getElementById('bezettingPopupModal');
     const body = document.getElementById('bezettingPopupBody');
     
-    // Generate download URL based on file name
     const fileName = item.download_bazetting || '';
-    let downloadUrl = '#';
-    let canDownload = false;
-    
-    if (fileName) {
-        // Try to construct URL from Supabase storage or direct link
-        if (fileName.startsWith('http')) {
-            downloadUrl = fileName;
-            canDownload = true;
-        } else {
-            // Assume file is in Supabase storage bucket 'documents'
-            downloadUrl = `https://ftsqrfqsbhwivyphogbv.supabase.co/storage/v1/object/documents/${fileName}`;
-            canDownload = true;
-        }
-    }
+    const hasFile = fileName && fileName.trim() !== '';
     
     body.innerHTML = `
-        <div class="detail-grid">
-            <div class="detail-item full-width">
-                <label><i class="fas fa-hospital"></i> Unit Kerja</label>
-                <value><strong>${item.unit_kerja || '-'}</strong></value>
+        <div class="book-detail">
+            <div class="book-detail-header">
+                <div class="detail-icon-bg pdf">
+                    <i class="fas fa-file-pdf"></i>
+                </div>
+                <div>
+                    <h3>${item.unit_kerja || 'N/A'}</h3>
+                    <p>Dokumen Bezetting</p>
+                </div>
             </div>
-            <div class="detail-item">
-                <label><i class="fas fa-calendar-alt"></i> Tahun Update</label>
-                <value><span class="badge badge-info">${item.updated_tahun || '-'}</span></value>
-            </div>
-            <div class="detail-item full-width">
-                <label><i class="fas fa-file-pdf"></i> Nama File</label>
-                <value><code style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">${fileName || 'Tidak ada file'}</code></value>
-            </div>
-        </div>
-        
-        <div class="download-section">
-            <div class="download-icon-wrapper">
-                <i class="fas fa-file-pdf download-file-icon"></i>
-            </div>
-            <h4>Dokumen Bezetting</h4>
-            <p>Dokumen penempatan tenaga kesehatan untuk unit <strong>${item.unit_kerja}</strong></p>
             
-            ${canDownload ? `
-                <div class="download-buttons">
-                    <a href="${downloadUrl}" 
-                       target="_blank" 
-                       rel="noopener noreferrer"
-                       class="btn btn-download btn-download-primary"
-                       onclick="trackDownload('${item.unit_kerja}', '${fileName}')">
-                        <i class="fas fa-external-link-alt"></i> Buka di Tab Baru
-                    </a>
-                    <a href="${downloadUrl}" 
-                       download="${fileName}"
-                       class="btn btn-download btn-download-success"
-                       onclick="trackDownload('${item.unit_kerja}', '${fileName}')">
-                        <i class="fas fa-download"></i> Unduh File
-                    </a>
+            <div class="book-detail-grid">
+                <div class="detail-row full-width">
+                    <span class="detail-label"><i class="fas fa-hospital"></i> Unit Kerja</span>
+                    <span class="detail-value text-strong">${item.unit_kerja || '-'}</span>
                 </div>
-                <p class="download-note">
-                    <i class="fas fa-info-circle"></i> Jika unduhan tidak otomatis, gunakan tombol "Buka di Tab Baru" lalu simpan manual.
-                </p>
-            ` : `
-                <div class="no-file-warning">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span>File dokumen belum tersedia untuk unit ini.</span>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-calendar-alt"></i> Tahun Update</span>
+                    <span class="detail-value badge-blue">${item.updated_tahun || '-'}</span>
                 </div>
-            `}
+                <div class="detail-row full-width">
+                    <span class="detail-label"><i class="fas fa-file-pdf"></i> Nama File</span>
+                    <span class="detail-value ${hasFile ? 'text-normal' : 'text-muted'}">${fileName || 'Tidak ada file'}</span>
+                </div>
+            </div>
+            
+            <div class="download-section-simple ${hasFile ? 'has-file' : 'no-file'}">
+                ${hasFile ? `
+                    <div class="file-preview">
+                        <i class="fas fa-file-pdf file-icon-large"></i>
+                        <div class="file-info">
+                            <strong>${fileName}</strong>
+                            <span>Dokumen bezetting lengkap</span>
+                        </div>
+                    </div>
+                    <a href="#" onclick="event.preventDefault(); handleBezettingDownload('${fileName}', '${item.unit_kerja}')" 
+                       class="btn-download-simple">
+                        <i class="fas fa-download"></i> Unduh Dokumen
+                    </a>
+                ` : `
+                    <div class="no-file-message">
+                        <i class="fas fa-inbox"></i>
+                        <p>File dokumen belum tersedia untuk unit ini</p>
+                    </div>
+                `}
+            </div>
         </div>
     `;
     
@@ -1338,17 +1349,21 @@ function showBezettingDetail(item) {
     setTimeout(() => modal.classList.add('active'), 10);
 }
 
-// Track download activity
-function trackDownload(unitName, fileName) {
-    console.log(`📥 Download triggered: ${fileName} from ${unitName}`);
+// Handle bezetting download
+function handleBezettingDownload(fileName, unitName) {
+    console.log(`📥 Download request: ${fileName} from ${unitName}`);
     showToast(`Mengunduh: ${fileName}`, 'info');
     
-    // You can add analytics tracking here
-    if (typeof gtag !== 'undefined') {
-        gtag('event', 'download', {
-            'file_name': fileName,
-            'unit': unitName
-        });
+    // Construct download URL (Supabase storage or direct link)
+    let downloadUrl = '#';
+    if (fileName.startsWith('http')) {
+        downloadUrl = fileName;
+    } else if (fileName) {
+        downloadUrl = `https://ftsqrfqsbhwivyphogbv.supabase.co/storage/v1/object/documents/${fileName}`;
+    }
+    
+    if (downloadUrl !== '#') {
+        window.open(downloadUrl, '_blank');
     }
 }
 
