@@ -363,12 +363,15 @@ async function saveTPM(tpmData, id = null) {
 
 /**
  * Get Spesialis data
+ * Struktur baru: nama_lengkap, jenis_kelamin, NIK, NIP, spesialisasi, unit_kerja, 
+ *                 nomor_STR, nomor_SIP, tanggal_SIP_Expired, status_pegawai,
+ *                 praktik_ke_1, praktik_ke_2, praktik_ke_3
  */
 async function getSpesialis() {
     try {
         const { data, error } = await supabaseClient
             .from('dokter_spesialis')
-            .select('*, unit_kerja:unit_kerja_id(nama_unit)')
+            .select('*')
             .eq('is_active', true)
             .order('nama_lengkap');
 
