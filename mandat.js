@@ -1089,28 +1089,21 @@ async function renderAnjabAbk(isAdmin) {
                         <p>Data Anjab-ABK belum tersedia</p>
                     </div>
                 ` : `
-                    <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));">
+                    <div class="anjab-grid-5col">
                         ${data.map((item, i) => `
-                            <div class="stat-card ${cardColors[i % cardColors.length]} anjab-card" 
+                            <div class="stat-card ${cardColors[i % cardColors.length]} anjab-card-compact" 
                                  onclick="showAnjabDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})"
-                                 style="cursor: pointer; transition: all 0.3s ease;"
-                                 onmouseenter="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'"
-                                 onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow=''">
-                                <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
-                                <div class="stat-info">
-                                    <h3>${item.jabatan || 'N/A'}</h3>
-                                    <p><i class="fas fa-hospital"></i> ${item.unit || 'N/A'}</p>
-                                    <div style="margin-top: 10px; display: flex; gap: 15px; flex-wrap: wrap;">
-                                        <span class="badge badge-info"><i class="fas fa-weight-hanging"></i> Beban: ${item.beban || 0}</span>
-                                        <span class="badge badge-success"><i class="fas fa-users"></i> Kebutuhan: ${item.kebutuhan || 0}</span>
-                                        <span class="badge badge-warning"><i class="fas fa-user-check"></i> Existing: ${item.existing || 0}</span>
+                                 title="${item.jabatan} - ${item.unit}">
+                                <div class="stat-icon-compact"><i class="fas fa-file-alt"></i></div>
+                                <div class="stat-info-compact">
+                                    <h4>${item.jabatan || 'N/A'}</h4>
+                                    <small><i class="fas fa-hospital"></i> ${item.unit || '-'}</small>
+                                    <div class="anjab-metrics">
+                                        <span class="metric-badge bg-blue">B:${item.beban || 0}</span>
+                                        <span class="metric-badge bg-green">K:${item.kebutuhan || 0}</span>
+                                        <span class="metric-badge bg-orange">E:${item.existing || 0}</span>
+                                        <span class="metric-badge bg-red">G:${item.gap || 0}</span>
                                     </div>
-                                    <div style="margin-top: 8px;">
-                                        <span class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i> Gap: ${item.gap || 0}</span>
-                                    </div>
-                                </div>
-                                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2); text-align: center;">
-                                    <small style="color: rgba(255,255,255,0.8);"><i class="fas fa-eye"></i> Klik untuk detail lengkap</small>
                                 </div>
                             </div>
                         `).join('')}
@@ -1268,10 +1261,27 @@ async function renderBezetting(isAdmin) {
         ['Unit Kerja', 'Download File', 'Tahun Update'], canCreate, canEdit, canDelete);
 }
 
-// Function to show Bezetting detail in popup
+// Function to show Bezetting detail in popup with real download
 function showBezettingDetail(item) {
     const modal = document.getElementById('bezettingPopupModal');
     const body = document.getElementById('bezettingPopupBody');
+    
+    // Generate download URL based on file name
+    const fileName = item.download_bazetting || '';
+    let downloadUrl = '#';
+    let canDownload = false;
+    
+    if (fileName) {
+        // Try to construct URL from Supabase storage or direct link
+        if (fileName.startsWith('http')) {
+            downloadUrl = fileName;
+            canDownload = true;
+        } else {
+            // Assume file is in Supabase storage bucket 'documents'
+            downloadUrl = `https://ftsqrfqsbhwivyphogbv.supabase.co/storage/v1/object/documents/${fileName}`;
+            canDownload = true;
+        }
+    }
     
     body.innerHTML = `
         <div class="detail-grid">
@@ -1284,37 +1294,62 @@ function showBezettingDetail(item) {
                 <value><span class="badge badge-info">${item.updated_tahun || '-'}</span></value>
             </div>
             <div class="detail-item full-width">
-                <label><i class="fas fa-file-pdf"></i> File Bezetting</label>
-                <value>
-                    ${item.download_bazetting ? 
-                        `<a href="#" onclick="event.preventDefault(); showToast('Mengunduh file...', 'info');" 
-                           style="display: inline-flex; align-items: center; gap: 8px; color: var(--danger); text-decoration: none; padding: 10px 20px; background: #fef2f2; border-radius: 8px; border: 1px solid #fecaca;">
-                            <i class="fas fa-file-pdf" style="font-size: 1.5rem;"></i>
-                            <div>
-                                <strong>${item.download_bazetting}</strong>
-                                <br><small>Klik untuk mengunduh</small>
-                            </div>
-                        </a>` :
-                        '<span class="badge badge-secondary">Tidak ada file</span>'
-                    }
-                </value>
+                <label><i class="fas fa-file-pdf"></i> Nama File</label>
+                <value><code style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">${fileName || 'Tidak ada file'}</code></value>
             </div>
         </div>
         
-        <div style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-radius: 12px; text-align: center;">
-            <i class="fas fa-info-circle" style="font-size: 2rem; color: var(--success); margin-bottom: 10px;"></i>
-            <h4 style="color: var(--primary); margin-bottom: 10px;">Informasi Bezetting</h4>
-            <p style="color: var(--text-secondary); margin-bottom: 15px;">
-                Dokumen bezetting untuk <strong>${item.unit_kerja}</strong> terakhir diupdate pada tahun <strong>${item.updated_tahun || '-'}</strong>.
-            </p>
-            <button type="button" class="btn btn-primary" onclick="showToast('Fitur download akan segera tersedia', 'info')">
-                <i class="fas fa-download"></i> Unduh Dokumen
-            </button>
+        <div class="download-section">
+            <div class="download-icon-wrapper">
+                <i class="fas fa-file-pdf download-file-icon"></i>
+            </div>
+            <h4>Dokumen Bezetting</h4>
+            <p>Dokumen penempatan tenaga kesehatan untuk unit <strong>${item.unit_kerja}</strong></p>
+            
+            ${canDownload ? `
+                <div class="download-buttons">
+                    <a href="${downloadUrl}" 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       class="btn btn-download btn-download-primary"
+                       onclick="trackDownload('${item.unit_kerja}', '${fileName}')">
+                        <i class="fas fa-external-link-alt"></i> Buka di Tab Baru
+                    </a>
+                    <a href="${downloadUrl}" 
+                       download="${fileName}"
+                       class="btn btn-download btn-download-success"
+                       onclick="trackDownload('${item.unit_kerja}', '${fileName}')">
+                        <i class="fas fa-download"></i> Unduh File
+                    </a>
+                </div>
+                <p class="download-note">
+                    <i class="fas fa-info-circle"></i> Jika unduhan tidak otomatis, gunakan tombol "Buka di Tab Baru" lalu simpan manual.
+                </p>
+            ` : `
+                <div class="no-file-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span>File dokumen belum tersedia untuk unit ini.</span>
+                </div>
+            `}
         </div>
     `;
     
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('active'), 10);
+}
+
+// Track download activity
+function trackDownload(unitName, fileName) {
+    console.log(`📥 Download triggered: ${fileName} from ${unitName}`);
+    showToast(`Mengunduh: ${fileName}`, 'info');
+    
+    // You can add analytics tracking here
+    if (typeof gtag !== 'undefined') {
+        gtag('event', 'download', {
+            'file_name': fileName,
+            'unit': unitName
+        });
+    }
 }
 
 function closeBezettingPopup(event) {

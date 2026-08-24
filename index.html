@@ -1302,6 +1302,203 @@
             color: #475569; 
         }
 
+        /* ============ ANJAB-ABK 5-COLUMN GRID (Compact Cards) ============ */
+        .anjab-grid-5col {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            padding: 10px 0;
+        }
+
+        @media (max-width: 1400px) {
+            .anjab-grid-5col { grid-template-columns: repeat(4, 1fr); }
+        }
+        
+        @media (max-width: 1100px) {
+            .anjab-grid-5col { grid-template-columns: repeat(3, 1fr); }
+        }
+        
+        @media (max-width: 800px) {
+            .anjab-grid-5col { grid-template-columns: repeat(2, 1fr); }
+        }
+        
+        @media (max-width: 500px) {
+            .anjab-grid-5col { grid-template-columns: 1fr; }
+        }
+
+        /* Compact Card Style for Anjab */
+        .anjab-card-compact {
+            padding: 14px !important;
+            border-radius: 12px !important;
+            cursor: pointer;
+            transition: all 0.25s ease !important;
+            min-height: auto !important;
+        }
+
+        .anjab-card-compact:hover {
+            transform: translateY(-4px) !important;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15) !important;
+        }
+
+        .stat-icon-compact {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.25);
+        }
+
+        .stat-info-compact h4 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 3px;
+            line-height: 1.2;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .stat-info-compact small {
+            font-size: 0.72rem;
+            color: rgba(255,255,255,0.8);
+            display: block;
+            margin-bottom: 8px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Compact Metrics Badges */
+        .anjab-metrics {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .metric-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .metric-badge.bg-blue { background: rgba(59, 130, 246, 0.9); }
+        .metric-badge.bg-green { background: rgba(16, 185, 129, 0.9); }
+        .metric-badge.bg-orange { background: rgba(249, 115, 22, 0.9); }
+        .metric-badge.bg-red { background: rgba(239, 68, 68, 0.9); }
+
+        /* ============ BEZETTING DOWNLOAD SECTION ============ */
+        .download-section {
+            margin-top: 24px;
+            padding: 24px;
+            background: linear-gradient(135deg, #fefce8, #fef3c7);
+            border-radius: 16px;
+            text-align: center;
+            border: 2px solid #fde68a;
+        }
+
+        .download-icon-wrapper {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 16px rgba(239, 68, 68, 0.3);
+        }
+
+        .download-file-icon {
+            font-size: 28px;
+            color: white;
+        }
+
+        .download-section h4 {
+            font-size: 1.15rem;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .download-section > p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        .download-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .btn-download {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-download-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+        }
+
+        .btn-download-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.45);
+        }
+
+        .btn-download-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+        }
+
+        .btn-download-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.45);
+        }
+
+        .download-note {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 12px;
+        }
+
+        .no-file-warning {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 16px;
+            background: #fef2f2;
+            border-radius: 10px;
+            color: #dc2626;
+            font-size: 0.9rem;
+        }
+
         /* Responsive Popup */
         @media (max-width: 640px) {
             .popup-content {
