@@ -11,8 +11,8 @@
 
 // ============ SUPABASE CONFIGURATION ============
 // TODO: Replace with your actual Supabase credentials
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://ftsqrfqsbhwivyphogbv.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0c3FyZnFzYmh3aXZ5cGhvZ2J2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1NjE0MDQsImV4cCI6MjEwMzEzNzQwNH0.Zb_ukPoJXfDFzfSS--at4CDBK7VI2_-gLU6N7BVnoCs';
 
 // Initialize Supabase Client
 let supabaseClient = null;
