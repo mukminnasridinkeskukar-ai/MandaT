@@ -40,7 +40,7 @@
             overflow-x: hidden;
         }
 
-        /* ============ LANDING PAGE ============ */
+        /* ============ LANDING PAGE (Public - No Login Required) ============ */
         .landing-page {
             position: fixed;
             top: 0;
@@ -58,6 +58,7 @@
         .landing-page.hidden {
             opacity: 0;
             visibility: hidden;
+            pointer-events: none;
         }
 
         .landing-content {
@@ -136,6 +137,241 @@
             100% { width: 100%; left: 0; }
         }
 
+        /* ============ LOGIN MODAL (For Admin Access Only) ============ */
+        .login-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 15000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .login-modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .login-modal {
+            background: white;
+            border-radius: 24px;
+            padding: 45px 40px;
+            width: 90%;
+            max-width: 420px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+            animation: modalSlideIn 0.4s ease-out;
+            position: relative;
+        }
+
+        @keyframes modalSlideIn {
+            from { transform: translateY(-20px) scale(0.95); opacity: 0; }
+            to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+
+        .login-modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #f1f5f9;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+        }
+
+        .login-modal-close:hover {
+            background: #e2e8f0;
+            color: var(--text-primary);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-header-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 18px;
+            box-shadow: 0 10px 25px rgba(13, 148, 136, 0.25);
+        }
+
+        .login-header-icon i {
+            font-size: 32px;
+            color: white;
+        }
+
+        .login-header h2 {
+            font-size: 1.5rem;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+
+        .login-header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .login-form-group {
+            margin-bottom: 20px;
+        }
+
+        .login-form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .login-input-wrapper {
+            position: relative;
+        }
+
+        .login-input-wrapper i {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 13px 15px 13px 42px;
+            border: 2px solid #e2e8f0;
+            border-radius: 11px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .login-input:focus {
+            outline: none;
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
+        }
+
+        .login-submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--secondary), #0f766e);
+            color: white;
+            border: none;
+            border-radius: 11px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            margin-top: 5px;
+        }
+
+        .login-submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(13, 148, 136, 0.35);
+        }
+
+        .login-submit-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .login-error-msg {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            margin-top: 15px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .login-error-msg.show {
+            display: flex;
+        }
+
+        .demo-accounts-section {
+            margin-top: 22px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .demo-accounts-title {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .demo-account-btn {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 11px 14px;
+            background: #f8fafc;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 8px;
+        }
+
+        .demo-account-btn:hover {
+            border-color: var(--secondary);
+            background: #f0fdfa;
+        }
+
+        .demo-account-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .demo-account-info i {
+            font-size: 1.1rem;
+        }
+
+        .demo-account-badge {
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+
+        .badge-super-admin { background: #fef3c7; color: #92400e; }
+        .badge-operator { background: #dbeafe; color: #1e40af; }
+        .badge-dokter { background: #dcfce7; color: #166534; }
+
         /* ============ MAIN APP LAYOUT ============ */
         .app-container {
             display: none;
@@ -200,6 +436,64 @@
             letter-spacing: 1px;
         }
 
+        /* User session info in sidebar (shown after login) */
+        .user-session-bar {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: none;
+        }
+
+        .user-session-bar.active {
+            display: block;
+        }
+
+        .user-session-avatar {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, var(--secondary), var(--accent));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.82rem;
+        }
+
+        .user-session-details {
+            flex: 1;
+        }
+
+        .user-session-name {
+            font-size: 0.84rem;
+            font-weight: 600;
+        }
+
+        .user-session-role {
+            font-size: 0.68rem;
+            opacity: 0.75;
+        }
+
+        .logout-btn-sm {
+            background: rgba(239, 68, 68, 0.2);
+            border: none;
+            color: #fecaca;
+            width: 30px;
+            height: 30px;
+            border-radius: 7px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .logout-btn-sm:hover {
+            background: rgba(239, 68, 68, 0.4);
+            color: white;
+        }
+
+        /* Sidebar Sections */
         .sidebar-section {
             padding: 15px 0;
             border-bottom: 1px solid rgba(255,255,255,0.05);
@@ -224,6 +518,10 @@
 
         .sidebar-menu-item {
             margin: 2px 0;
+        }
+
+        .sidebar-menu-item.hidden-item {
+            display: none;
         }
 
         .sidebar-menu-link {
@@ -262,6 +560,82 @@
             background: linear-gradient(90deg, var(--accent), transparent);
             border-left: 3px solid var(--accent);
         }
+
+        .menu-lock-icon {
+            margin-left: auto;
+            font-size: 0.72rem;
+            opacity: 0.55;
+        }
+
+        /* Admin section locked state */
+        .admin-section-locked {
+            padding: 15px 20px;
+            text-align: center;
+        }
+
+        .admin-lock-icon {
+            width: 60px;
+            height: 60px;
+            background: rgba(245, 158, 11, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+        }
+
+        .admin-lock-icon i {
+            font-size: 28px;
+            color: var(--accent);
+        }
+
+        .admin-locked-text h4 {
+            font-size: 1rem;
+            color: white;
+            margin-bottom: 5px;
+        }
+
+        .admin-locked-text p {
+            font-size: 0.82rem;
+            color: rgba(255,255,255,0.65);
+            margin-bottom: 15px;
+        }
+
+        .btn-login-to-admin {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, var(--accent), #d97706);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login-to-admin:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(245, 158, 11, 0.35);
+        }
+
+        .role-indicator-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 9px;
+            border-radius: 11px;
+            font-size: 0.64rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .role-super-admin { background: #fef3c7; color: #92400e; }
+        .role-operator { background: #dbeafe; color: #1e40af; }
+        .role-dokter { background: #dcfce7; color: #166534; }
 
         /* ============ MAIN CONTENT ============ */
         .main-content {
@@ -329,6 +703,37 @@
             justify-content: center;
             color: white;
             font-weight: 600;
+        }
+
+        .btn-admin-logout {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-admin-logout:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .guest-badge {
+            padding: 8px 15px;
+            background: #f1f5f9;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .content-area {
@@ -827,7 +1232,7 @@
         .badge-danger { background: #fee2e2; color: #991b1b; }
         .badge-info { background: #dbeafe; color: #1e40af; }
 
-        /* ============ EMPTY STATE ============ */
+        /* ============ EMPTY STATE / ACCESS DENIED ============ */
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -844,6 +1249,39 @@
             font-size: 1.2rem;
             margin-bottom: 10px;
             color: var(--text-primary);
+        }
+
+        .access-denied {
+            text-align: center;
+            padding: 80px 20px;
+        }
+
+        .access-denied-icon {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 25px;
+        }
+
+        .access-denied-icon i {
+            font-size: 50px;
+            color: #92400e;
+        }
+
+        .access-denied h2 {
+            font-size: 1.8rem;
+            color: var(--text-primary);
+            margin-bottom: 10px;
+        }
+
+        .access-denied p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-bottom: 25px;
         }
 
         /* ============ TOAST NOTIFICATION ============ */
@@ -917,6 +1355,11 @@
         @media (max-width: 640px) {
             .landing-title {
                 font-size: 2.5rem;
+            }
+
+            .login-modal {
+                padding: 30px 20px;
+                margin: 20px;
             }
 
             .content-area {
@@ -1039,7 +1482,7 @@
     </style>
 </head>
 <body>
-    <!-- ============ LANDING PAGE ============ -->
+    <!-- ============ LANDING PAGE (Public - Always Shows First) ============ -->
     <div class="landing-page" id="landingPage">
         <div class="landing-content">
             <div class="landing-logo">
@@ -1048,6 +1491,80 @@
             <h1 class="landing-title">MandaT</h1>
             <p class="landing-subtitle">Manajemen Data SDM Kesehatan</p>
             <div class="loading-bar"></div>
+        </div>
+    </div>
+
+    <!-- ============ LOGIN MODAL (For Admin Access Only) ============ -->
+    <div class="login-modal-overlay" id="loginModal">
+        <div class="login-modal">
+            <button class="login-modal-close" onclick="closeLoginModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            
+            <div class="login-header">
+                <div class="login-header-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h2>Login Admin</h2>
+                <p>Masuk untuk mengakses Panel Admin</p>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="login-form-group">
+                    <label for="loginUsername">Username</label>
+                    <div class="login-input-wrapper">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="loginUsername" class="login-input" placeholder="Masukkan username" required autocomplete="username">
+                    </div>
+                </div>
+
+                <div class="login-form-group">
+                    <label for="loginPassword">Password</label>
+                    <div class="login-input-wrapper">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="loginPassword" class="login-input" placeholder="Masukkan password" required autocomplete="current-password">
+                    </div>
+                </div>
+
+                <button type="submit" class="login-submit-btn" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i> Masuk ke Panel Admin
+                </button>
+
+                <div class="login-error-msg" id="loginError">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span id="loginErrorMsg">Username atau password salah!</span>
+                </div>
+            </form>
+
+            <div class="demo-accounts-section">
+                <div class="demo-accounts-title">
+                    <i class="fas fa-key"></i> Demo Account (Klik untuk login cepat)
+                </div>
+                
+                <div class="demo-account-btn" onclick="quickLogin('superadmin', 'super123')">
+                    <div class="demo-account-info">
+                        <i class="fas fa-user-shield" style="color: #92400e;"></i>
+                        <span><strong>Super Admin</strong></span>
+                    </div>
+                    <span class="demo-account-badge badge-super-admin">Full Akses</span>
+                </div>
+
+                <div class="demo-account-btn" onclick="quickLogin('operator', 'op123')">
+                    <div class="demo-account-info">
+                        <i class="fas fa-user-cog" style="color: #1e40af;"></i>
+                        <span><strong>Operator</strong></span>
+                    </div>
+                    <span class="demo-account-badge badge-operator">Data SDMK</span>
+                </div>
+
+                <div class="demo-account-btn" onclick="quickLogin('dokter', 'doc123')">
+                    <div class="demo-account-info">
+                        <i class="fas fa-user-md" style="color: #166534;"></i>
+                        <span><strong>Dokter</strong></span>
+                    </div>
+                    <span class="demo-account-badge badge-dokter">Dr Spesialis & TPM</span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1068,10 +1585,24 @@
                         <p>SDM Kesehatan</p>
                     </div>
                 </div>
+                
+                <!-- User Session Info (Hidden until login) -->
+                <div class="user-session-bar" id="userSessionBar">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="user-session-avatar" id="sessionAvatar">A</div>
+                        <div class="user-session-details">
+                            <div class="user-session-name" id="sessionName">Admin</div>
+                            <div class="user-session-role" id="sessionRole">Administrator</div>
+                        </div>
+                        <button class="logout-btn-sm" onclick="handleLogout()" title="Logout">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <!-- Section 1: Dashboard -->
-            <div class="sidebar-section">
+            <!-- Section 1: Dashboard (PUBLIC - Always Visible) -->
+            <div class="sidebar-section" id="section-dashboard">
                 <div class="sidebar-section-title">
                     <i class="fas fa-chart-pie"></i> Dashboard
                 </div>
@@ -1104,8 +1635,8 @@
                 </ul>
             </div>
 
-            <!-- Section 2: Layanan -->
-            <div class="sidebar-section">
+            <!-- Section 2: Layanan (PUBLIC - Always Visible) -->
+            <div class="sidebar-section" id="section-layanan">
                 <div class="sidebar-section-title">
                     <i class="fas fa-concierge-bell"></i> Layanan
                 </div>
@@ -1138,73 +1669,109 @@
                 </ul>
             </div>
 
-            <!-- Section 3: Panel Admin -->
-            <div class="sidebar-section">
-                <div class="sidebar-section-title">
-                    <i class="fas fa-shield-alt"></i> Panel Admin
+            <!-- Section 3: Panel Admin (Requires Login) -->
+            <div class="sidebar-section" id="section-admin">
+                <!-- Locked State (Before Login) -->
+                <div class="admin-section-locked" id="adminLockedState">
+                    <div class="admin-lock-icon">
+                        <i class="fas fa-lock"></i>
+                    </div>
+                    <div class="admin-locked-text">
+                        <h4>Panel Admin Terkunci</h4>
+                        <p>Login untuk mengelola data</p>
+                    </div>
+                    <button class="btn-login-to-admin" onclick="openLoginModal()">
+                        <i class="fas fa-sign-in-alt"></i> Login Admin
+                    </button>
                 </div>
-                <ul class="sidebar-menu">
-                    <li class="sidebar-menu-item">
-                        <a class="sidebar-menu-link admin-link" data-page="admin-dashboard">
-                            <i class="fas fa-tachometer-alt"></i> Dashboard
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a class="sidebar-menu-link admin-link" data-page="admin-pengumuman">
-                            <i class="fas fa-bullhorn"></i> Pengumuman
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a class="sidebar-menu-link admin-link" data-page="admin-renbut">
-                            <i class="fas fa-clipboard-list"></i> Renbut
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a class="sidebar-menu-link admin-link" data-page="admin-anjab-abk">
-                            <i class="fas fa-file-alt"></i> Anjab-ABK
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a class="sidebar-menu-link admin-link" data-page="admin-bezetting">
-                            <i class="fas fa-users-cog"></i> Bezetting
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a class="sidebar-menu-link admin-link" data-page="admin-dokter-spesialis">
-                            <i class="fas fa-user-md"></i> Dokter Spesialis
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a class="sidebar-menu-link admin-link" data-page="admin-rasio">
-                            <i class="fas fa-calculator"></i> Rasio
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a class="sidebar-menu-link admin-link" data-page="admin-distribusi">
-                            <i class="fas fa-map-marked-alt"></i> Distribusi
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a class="sidebar-menu-link admin-link" data-page="admin-profil-faskes">
-                            <i class="fas fa-hospital"></i> Profil Faskes
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a class="sidebar-menu-link admin-link" data-page="admin-tpm">
-                            <i class="fas fa-clinic-medical"></i> Tempat Praktik Mandiri
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a class="sidebar-menu-link admin-link" data-page="admin-users">
-                            <i class="fas fa-user-cog"></i> Users
-                        </a>
-                    </li>
-                    <li class="sidebar-menu-item">
-                        <a class="sidebar-menu-link admin-link" data-page="admin-data-sdmk">
-                            <i class="fas fa-database"></i> Data SDMK
-                        </a>
-                    </li>
-                </ul>
+
+                <!-- Unlocked State (After Login) - Hidden by default -->
+                <div style="display: none;" id="adminUnlockedState">
+                    <div class="sidebar-section-title">
+                        <i class="fas fa-shield-alt"></i> Panel Admin
+                        <span class="role-indicator-inline" id="adminRoleBadge" style="margin-left: auto;">Admin</span>
+                    </div>
+                    <ul class="sidebar-menu">
+                        <!-- Super Admin Only Items -->
+                        <li class="sidebar-menu-item" data-permission="admin:super" data-roles="super_admin">
+                            <a class="sidebar-menu-link admin-link" data-page="admin-dashboard">
+                                <i class="fas fa-tachometer-alt"></i> Dashboard
+                                <i class="fas fa-lock menu-lock-icon" title="Super Admin Only"></i>
+                            </a>
+                        </li>
+                        <li class="sidebar-menu-item" data-permission="admin:super" data-roles="super_admin">
+                            <a class="sidebar-menu-link admin-link" data-page="admin-pengumuman">
+                                <i class="fas fa-bullhorn"></i> Pengumuman
+                                <i class="fas fa-lock menu-lock-icon" title="Super Admin Only"></i>
+                            </a>
+                        </li>
+                        <li class="sidebar-menu-item" data-permission="admin:super" data-roles="super_admin">
+                            <a class="sidebar-menu-link admin-link" data-page="admin-renbut">
+                                <i class="fas fa-clipboard-list"></i> Renbut
+                                <i class="fas fa-lock menu-lock-icon" title="Super Admin Only"></i>
+                            </a>
+                        </li>
+                        <li class="sidebar-menu-item" data-permission="admin:super" data-roles="super_admin">
+                            <a class="sidebar-menu-link admin-link" data-page="admin-anjab-abk">
+                                <i class="fas fa-file-alt"></i> Anjab-ABK
+                                <i class="fas fa-lock menu-lock-icon" title="Super Admin Only"></i>
+                            </a>
+                        </li>
+                        <li class="sidebar-menu-item" data-permission="admin:super" data-roles="super_admin">
+                            <a class="sidebar-menu-link admin-link" data-page="admin-bezetting">
+                                <i class="fas fa-users-cog"></i> Bezetting
+                                <i class="fas fa-lock menu-lock-icon" title="Super Admin Only"></i>
+                            </a>
+                        </li>
+                        
+                        <!-- Operator & Super Admin Items -->
+                        <li class="sidebar-menu-item" data-permission="admin:operator" data-roles="super_admin,operator">
+                            <a class="sidebar-menu-link admin-link" data-page="admin-data-sdmk">
+                                <i class="fas fa-database"></i> Data SDMK
+                                <i class="fas fa-lock menu-lock-icon" title="Operator+"></i>
+                            </a>
+                        </li>
+                        
+                        <!-- Dokter & Super Admin Items -->
+                        <li class="sidebar-menu-item" data-permission="admin:dokter" data-roles="super_admin,dokter">
+                            <a class="sidebar-menu-link admin-link" data-page="admin-dokter-spesialis">
+                                <i class="fas fa-user-md"></i> Dokter Spesialis
+                                <i class="fas fa-lock menu-lock-icon" title="Dokter+"></i>
+                            </a>
+                        </li>
+                        <li class="sidebar-menu-item" data-permission="admin:dokter" data-roles="super_admin,dokter">
+                            <a class="sidebar-menu-link admin-link" data-page="admin-tpm">
+                                <i class="fas fa-clinic-medical"></i> Tempat Praktik Mandiri
+                                <i class="fas fa-lock menu-lock-icon" title="Dokter+"></i>
+                            </a>
+                        </li>
+                        
+                        <!-- All Admin Items -->
+                        <li class="sidebar-menu-item" data-permission="admin:all" data-roles="super_admin,operator,dokter">
+                            <a class="sidebar-menu-link admin-link" data-page="admin-rasio">
+                                <i class="fas fa-calculator"></i> Rasio
+                            </a>
+                        </li>
+                        <li class="sidebar-menu-item" data-permission="admin:all" data-roles="super_admin,operator,dokter">
+                            <a class="sidebar-menu-link admin-link" data-page="admin-distribusi">
+                                <i class="fas fa-map-marked-alt"></i> Distribusi
+                            </a>
+                        </li>
+                        <li class="sidebar-menu-item" data-permission="admin:all" data-roles="super_admin,operator,dokter">
+                            <a class="sidebar-menu-link admin-link" data-page="admin-profil-faskes">
+                                <i class="fas fa-hospital"></i> Profil Faskes
+                            </a>
+                        </li>
+                        
+                        <!-- Super Admin Only - User Management -->
+                        <li class="sidebar-menu-item" data-permission="admin:super" data-roles="super_admin">
+                            <a class="sidebar-menu-link admin-link" data-page="admin-users">
+                                <i class="fas fa-user-cog"></i> Kelola Users
+                                <i class="fas fa-lock menu-lock-icon" title="Super Admin Only"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </aside>
 
@@ -1217,10 +1784,22 @@
                     </button>
                     <h1 class="page-title" id="pageTitle">Dashboard</h1>
                 </div>
-                <div class="topbar-right">
-                    <div class="user-info">
-                        <div class="user-avatar">A</div>
-                        <span>Administrator</span>
+                <div class="topbar-right" id="topbarRight">
+                    <!-- Guest State (Default) -->
+                    <div class="guest-badge" id="guestBadge">
+                        <i class="fas fa-eye"></i> Mode Tamu
+                    </div>
+                    
+                    <!-- Logged In State (Hidden by default) -->
+                    <div style="display: none;" id="loggedInState">
+                        <div class="user-info">
+                            <div class="user-avatar" id="topbarUserAvatar">A</div>
+                            <span id="topbarUserName">Admin</span>
+                            <span class="role-indicator-inline" id="topbarUserRole" style="margin-left: 8px;">Admin</span>
+                        </div>
+                        <button class="btn-admin-logout" onclick="handleLogout()">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </button>
                     </div>
                 </div>
             </header>
