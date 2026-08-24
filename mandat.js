@@ -55,8 +55,8 @@ console.log('✅ Critical function stubs defined');
 
 // ============ SUPABASE CONFIGURATION ============
 // TODO: Replace with your actual Supabase credentials
-const SUPABASE_URL = 'https://ftsqrfqsbhwivyphogbv.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0c3FyZnFzYmh3aXZ5cGhvZ2J2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1NjE0MDQsImV4cCI6MjEwMzEzNzQwNH0.Zb_ukPoJXfDFzfSS--at4CDBK7VI2_-gLU6N7BVnoCs';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 
 // Initialize Supabase Client
 let supabaseClient = null;
@@ -1066,67 +1066,262 @@ async function renderRenbut(isAdmin) {
         ['Unit Kerja', 'Jenis', 'Kebutuhan', 'Existing', 'Kekurangan', 'Prioritas', 'Tahun', 'Keterangan'], canCreate, canEdit, canDelete);
 }
 
-// Anjab-ABK
+// Anjab-ABK - Enhanced with Popup Detail View
 async function renderAnjabAbk(isAdmin) {
     const data = await fetchdata('anjab_abk');
     const canEdit = isAdmin && hasPermission('anjab-abk', 'edit');
     const canDelete = isAdmin && hasPermission('anjab-abk', 'delete');
     const canCreate = isAdmin && hasPermission('anjab-abk', 'create');
     
+    // Public view - with clickable cards that open popup
     if (!isAdmin || (!canEdit && !canCreate)) {
         return `
             <div class="view-container">
                 <div class="view-header">
-                    <h2><i class="fas fa-file-alt" style="color: var(--secondary);"></i> Analisis Jabatan & Beban Kerja</h2>
-                    <p>Data Analisis Jabatan dan Analisis Beban Kerja</p>
+                    <h2><i class="fas fa-file-alt" style="color: var(--secondary);"></i> Analisis Jabatan & Beban Kerja (Anjab-ABK)</h2>
+                    <p>Data Analisis Jabatan dan Analisis Beban Kerja. Klik kartu untuk melihat detail.</p>
                 </div>
-                <div class="info-grid">
-                    ${data.map(item => `
-                        <div class="info-card">
-                            <h4>${item.jabatan} - ${item.unit}</h4>
-                            <p>Beban: ${item.beban} | Gap: ${item.gap}</p>
-                        </div>
-                    `).join('')}
+                
+                ${data.length === 0 ? `
+                    <div class="empty-state">
+                        <i class="fas fa-folder-open" style="color: var(--text-secondary);"></i>
+                        <h3>Belum Ada Data</h3>
+                        <p>Data Anjab-ABK belum tersedia</p>
+                    </div>
+                ` : `
+                    <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));">
+                        ${data.map((item, i) => `
+                            <div class="stat-card ${cardColors[i % cardColors.length]} anjab-card" 
+                                 onclick="showAnjabDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})"
+                                 style="cursor: pointer; transition: all 0.3s ease;"
+                                 onmouseenter="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'"
+                                 onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow=''">
+                                <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
+                                <div class="stat-info">
+                                    <h3>${item.jabatan || 'N/A'}</h3>
+                                    <p><i class="fas fa-hospital"></i> ${item.unit || 'N/A'}</p>
+                                    <div style="margin-top: 10px; display: flex; gap: 15px; flex-wrap: wrap;">
+                                        <span class="badge badge-info"><i class="fas fa-weight-hanging"></i> Beban: ${item.beban || 0}</span>
+                                        <span class="badge badge-success"><i class="fas fa-users"></i> Kebutuhan: ${item.kebutuhan || 0}</span>
+                                        <span class="badge badge-warning"><i class="fas fa-user-check"></i> Existing: ${item.existing || 0}</span>
+                                    </div>
+                                    <div style="margin-top: 8px;">
+                                        <span class="badge badge-danger"><i class="fas fa-exclamation-triangle"></i> Gap: ${item.gap || 0}</span>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2); text-align: center;">
+                                    <small style="color: rgba(255,255,255,0.8);"><i class="fas fa-eye"></i> Klik untuk detail lengkap</small>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `}
+            </div>
+            
+            <!-- Popup Modal for Detail View -->
+            <div id="anjabPopupModal" class="popup-overlay" onclick="closeAnjabPopup(event)" style="display: none;">
+                <div class="popup-content" onclick="event.stopPropagation()">
+                    <div class="popup-header">
+                        <h3><i class="fas fa-file-alt"></i> Detail Anjab-ABK</h3>
+                        <button type="button" class="popup-close-btn" onclick="closeAnjabPopup()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="anjabPopupBody" class="popup-body">
+                        <!-- Content will be injected here -->
+                    </div>
                 </div>
             </div>
         `;
     }
     
+    // Admin view - full table with CRUD
     return buildAdminTable('anjab_abk', data, ['jabatan', 'unit', 'beban', 'kebutuhan', 'existing', 'gap', 'dokumen'],
         ['Jabatan', 'Unit', 'Beban', 'Kebutuhan', 'Existing', 'Gap', 'Dokumen'], canCreate, canEdit, canDelete);
 }
 
-// Bezetting
+// Function to show Anjab detail in popup
+function showAnjabDetail(item) {
+    const modal = document.getElementById('anjabPopupModal');
+    const body = document.getElementById('anjabPopupBody');
+    
+    body.innerHTML = `
+        <div class="detail-grid">
+            <div class="detail-item">
+                <label><i class="fas fa-briefcase"></i> Jabatan</label>
+                <value>${item.jabatan || '-'}</value>
+            </div>
+            <div class="detail-item">
+                <label><i class="fas fa-hospital"></i> Unit Kerja</label>
+                <value>${item.unit || '-'}</value>
+            </div>
+            <div class="detail-item">
+                <label><i class="fas fa-weight-hanging"></i> Beban Kerja</label>
+                <value><span class="badge badge-info">${item.beban || 0}</span></value>
+            </div>
+            <div class="detail-item">
+                <label><i class="fas fa-users"></i> Kebutuhan</label>
+                <value><span class="badge badge-success">${item.kebutuhan || 0}</span></value>
+            </div>
+            <div class="detail-item">
+                <label><i class="fas fa-user-check"></i> Existing</label>
+                <value><span class="badge badge-warning">${item.existing || 0}</span></value>
+            </div>
+            <div class="detail-item">
+                <label><i class="fas fa-exclamation-triangle"></i> Gap</label>
+                <value><span class="badge badge-danger">${item.gap || 0}</span></value>
+            </div>
+            <div class="detail-item full-width">
+                <label><i class="fas fa-file-contract"></i> Dokumen Referensi</label>
+                <value>${item.dokumen || '-'}</value>
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #f8fafc; border-radius: 10px;">
+            <h4 style="margin-bottom: 10px; color: var(--primary);"><i class="fas fa-chart-bar"></i> Analisis</h4>
+            <p style="color: var(--text-secondary);">
+                ${item.gap > 0 ? 
+                    `<i class="fas fa-exclamation-circle" style="color: var(--danger);"></i> Terdapat kekurangan <strong>${item.gap}</strong> tenaga untuk jabatan <strong>${item.jabatan}</strong> di ${item.unit}.` :
+                    `<i class="fas fa-check-circle" style="color: var(--success);"></i> Jumlah tenaga sudah memenuhi kebutuhan untuk jabatan ${item.jabatan}.`
+                }
+            </p>
+        </div>
+    `;
+    
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('active'), 10);
+}
+
+function closeAnjabPopup(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const modal = document.getElementById('anjabPopupModal');
+    modal.classList.remove('active');
+    setTimeout(() => modal.style.display = 'none', 300);
+}
+
+// Bezetting - Enhanced with Popup Detail View
 async function renderBezetting(isAdmin) {
     const data = await fetchdata('bezetting');
     const canEdit = isAdmin && hasPermission('bezetting', 'edit');
     const canDelete = isAdmin && hasPermission('bezetting', 'delete');
     const canCreate = isAdmin && hasPermission('bezetting', 'create');
     
+    // Public view - with clickable cards that open popup
     if (!isAdmin || (!canEdit && !canCreate)) {
         return `
             <div class="view-container">
                 <div class="view-header">
                     <h2><i class="fas fa-users-cog" style="color: var(--secondary);"></i> Data Bezetting</h2>
-                    <p>Dokumen bezetting penempatan tenaga kesehatan</p>
+                    <p>Dokumen bezetting penempatan tenaga kesehatan. Klik kartu untuk melihat detail dan mengunduh.</p>
                 </div>
-                <div class="dashboard-grid">
-                    ${data.map((item, i) => `
-                        <div class="stat-card ${cardColors[i % cardColors.length]}">
-                            <div class="stat-icon"><i class="fas fa-file-pdf"></i></div>
-                            <div class="stat-info">
-                                <h3>${item.unit_kerja}</h3>
-                                <p>Updated: ${item.updated_tahun}</p>
+                
+                ${data.length === 0 ? `
+                    <div class="empty-state">
+                        <i class="fas fa-folder-open" style="color: var(--text-secondary);"></i>
+                        <h3>Belum Ada Data</h3>
+                        <p>Data Bezetting belum tersedia</p>
+                    </div>
+                ` : `
+                    <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));">
+                        ${data.map((item, i) => `
+                            <div class="stat-card ${cardColors[i % cardColors.length]} bezetting-card" 
+                                 onclick="showBezettingDetail(${JSON.stringify(item).replace(/"/g, '&quot;')})"
+                                 style="cursor: pointer; transition: all 0.3s ease;"
+                                 onmouseenter="this.style.transform='translateY(-5px)'; this.style.boxShadow='0 12px 24px rgba(0,0,0,0.15)'"
+                                 onmouseleave="this.style.transform='translateY(0)'; this.style.boxShadow=''">
+                                <div class="stat-icon"><i class="fas fa-file-pdf"></i></div>
+                                <div class="stat-info">
+                                    <h3>${item.unit_kerja || 'N/A'}</h3>
+                                    <p><i class="fas fa-calendar-alt"></i> Tahun Update: ${item.updated_tahun || '-'}</p>
+                                    <div style="margin-top: 10px;">
+                                        <span class="badge badge-primary"><i class="fas fa-file-download"></i> File Tersedia</span>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2); text-align: center;">
+                                    <small style="color: rgba(255,255,255,0.8);"><i class="fas fa-eye"></i> Klik untuk detail & unduh</small>
+                                </div>
                             </div>
-                        </div>
-                    `).join('')}
+                        `).join('')}
+                    </div>
+                `}
+            </div>
+            
+            <!-- Popup Modal for Detail View -->
+            <div id="bezettingPopupModal" class="popup-overlay" onclick="closeBezettingPopup(event)" style="display: none;">
+                <div class="popup-content" onclick="event.stopPropagation()">
+                    <div class="popup-header">
+                        <h3><i class="fas fa-users-cog"></i> Detail Bezetting</h3>
+                        <button type="button" class="popup-close-btn" onclick="closeBezettingPopup()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="bezettingPopupBody" class="popup-body">
+                        <!-- Content will be injected here -->
+                    </div>
                 </div>
             </div>
         `;
     }
     
+    // Admin view - full table with CRUD
     return buildAdminTable('bezetting', data, ['unit_kerja', 'download_bazetting', 'updated_tahun'],
         ['Unit Kerja', 'Download File', 'Tahun Update'], canCreate, canEdit, canDelete);
+}
+
+// Function to show Bezetting detail in popup
+function showBezettingDetail(item) {
+    const modal = document.getElementById('bezettingPopupModal');
+    const body = document.getElementById('bezettingPopupBody');
+    
+    body.innerHTML = `
+        <div class="detail-grid">
+            <div class="detail-item full-width">
+                <label><i class="fas fa-hospital"></i> Unit Kerja</label>
+                <value><strong>${item.unit_kerja || '-'}</strong></value>
+            </div>
+            <div class="detail-item">
+                <label><i class="fas fa-calendar-alt"></i> Tahun Update</label>
+                <value><span class="badge badge-info">${item.updated_tahun || '-'}</span></value>
+            </div>
+            <div class="detail-item full-width">
+                <label><i class="fas fa-file-pdf"></i> File Bezetting</label>
+                <value>
+                    ${item.download_bazetting ? 
+                        `<a href="#" onclick="event.preventDefault(); showToast('Mengunduh file...', 'info');" 
+                           style="display: inline-flex; align-items: center; gap: 8px; color: var(--danger); text-decoration: none; padding: 10px 20px; background: #fef2f2; border-radius: 8px; border: 1px solid #fecaca;">
+                            <i class="fas fa-file-pdf" style="font-size: 1.5rem;"></i>
+                            <div>
+                                <strong>${item.download_bazetting}</strong>
+                                <br><small>Klik untuk mengunduh</small>
+                            </div>
+                        </a>` :
+                        '<span class="badge badge-secondary">Tidak ada file</span>'
+                    }
+                </value>
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-radius: 12px; text-align: center;">
+            <i class="fas fa-info-circle" style="font-size: 2rem; color: var(--success); margin-bottom: 10px;"></i>
+            <h4 style="color: var(--primary); margin-bottom: 10px;">Informasi Bezetting</h4>
+            <p style="color: var(--text-secondary); margin-bottom: 15px;">
+                Dokumen bezetting untuk <strong>${item.unit_kerja}</strong> terakhir diupdate pada tahun <strong>${item.updated_tahun || '-'}</strong>.
+            </p>
+            <button type="button" class="btn btn-primary" onclick="showToast('Fitur download akan segera tersedia', 'info')">
+                <i class="fas fa-download"></i> Unduh Dokumen
+            </button>
+        </div>
+    `;
+    
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('active'), 10);
+}
+
+function closeBezettingPopup(event) {
+    if (event && event.target !== event.currentTarget) return;
+    const modal = document.getElementById('bezettingPopupModal');
+    modal.classList.remove('active');
+    setTimeout(() => modal.style.display = 'none', 300);
 }
 
 // Dokter Spesialis
