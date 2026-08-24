@@ -15,8 +15,8 @@
 
 // ==================== CONFIGURATION ====================
 // Ganti dengan credential Supabase kamu:
-const SUPABASE_URL = 'https://YOUR-PROJECT-ID.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY-HERE';
+const SUPABASE_URL = 'https://ftsqrfqsbhwivyphogbv.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0c3FyZnFzYmh3aXZ5cGhvZ2J2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1NjE0MDQsImV4cCI6MjEwMzEzNzQwNH0.Zb_ukPoJXfDFzfSS--at4CDBK7VI2_-gLU6N7BVnoCs';
 
 // ==================== INITIALIZATION ====================
 let supabaseClient = null;
