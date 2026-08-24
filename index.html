@@ -32,6 +32,9 @@
 
   <!-- Supabase Client (load early) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  
+  <!-- MANDAT API Client (External - loads all Supabase functions) -->
+  <script src="supabase-client.js"></script>
 
   <!-- Tailwind Config -->
   <script>
@@ -2775,494 +2778,69 @@
     }
 
     // ============================================================
-    // SUPABASE API CLIENT (Embedded - Self-Contained)
+    // EXTERNAL API CLIENT - Loaded from supabase-client.js
     // ============================================================
-    
-    // ⚠️ KONFIGURASI SUPABASE - Sudah terintegrasi dengan credential Anda
-    const SUPABASE_URL = 'https://ftsqrfqsbhwivyphogbv.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0c3FyZnFzYmh3aXZ5cGhvZ2J2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1NjE0MDQsImV4cCI6MjEwMzEzNzQwNH0.Zb_ukPoJXfDFzfSS--at4CDBK7VI2_-gLU6N7BVnoCs';
-    
-    let supabaseClient = null;
-    
-    /**
-     * Initialize Supabase client
-     */
-    function initSupabase(url = SUPABASE_URL, key = SUPABASE_ANON_KEY) {
-      try {
-        if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-          supabaseClient = window.supabase.createClient(url, key);
-          console.log('[MANDAT] ✅ Supabase client initialized');
-          return true;
-        } else {
-          console.warn('[MANDAT] ⚠️ Supabase JS not loaded');
-          return false;
-        }
-      } catch (err) {
-        console.error('[MANDAT] ❌ Supabase init error:', err);
-        return false;
-      }
-    }
+    // All Supabase functions (callAPI, initSupabase, getSDMK, etc.)
+    // are now loaded from external file: supabase-client.js
+    // This makes the HTML lighter and easier to maintain.
+    // ============================================================
+
+    // ==================== SAMPLE DATA (Offline/Demo Mode) ====================
     
     /**
-     * MAIN API FUNCTION - Router untuk semua database operations
+     * Load sample data for demo/offline mode
      */
-    async function callAPI(action, params = {}) {
-      console.log(`[MANDAT-API] ${action}`, params);
+    function loadSampleData() {
+      console.log('[MANDAT] Loading sample data...');
       
-      // Initialize jika belum
-      if (!supabaseClient) {
-        if (!initSupabase()) {
-          return handleOfflineAction(action, params);
-        }
-      }
+      // Sample Unit Kerja
+      DATA.unit_kerja = [
+        { id: '1', nama_unit: 'RSUD Kutai Kartanegara', jenis: 'RS', status: 'aktif', alamat: 'Jl. Ahmad Yani No. 1 Tenggarong' },
+        { id: '2', nama_unit: 'Puskesmas Tenggarong', jenis: 'Puskesmas', status: 'aktif', alamat: 'Jl. Diponegoro No. 5' },
+        { id: '3', nama_unit: 'Puskesmas Loa Kulu', jenis: 'Puskesmas', status: 'aktif', alamat: 'Jl. Lintas Kalimantan Km. 45' },
+        { id: '4', nama_unit: 'Klinik Pratama Sehat', jenis: 'Klinik', status: 'aktif', alamat: 'Jl. Gajah Mada No. 10' }
+      ];
       
-      try {
-        let result;
-        
-        switch (action) {
-          case 'login':
-            result = await loginSupabase(params.username, params.password);
-            break;
-            
-          case 'getDashboard':
-            result = await getDashboardSummary();
-            break;
-            
-          case 'getPengumuman':
-            result = await getPengumuman();
-            break;
-          case 'savePengumuman':
-            result = await savePengumuman(params.data, params.id);
-            break;
-          case 'deletePengumuman':
-            result = await deleteRecord('pengumuman', params.id);
-            break;
-            
-          case 'getRenbut':
-            result = await getRenbut();
-            break;
-          case 'saveRenbut':
-            result = await saveRenbut(params.data, params.id);
-            break;
-          case 'deleteRenbut':
-            result = await deleteRecord('renbut', params.id);
-            break;
-            
-          case 'getSDMKData':
-            result = await getSDMK();
-            break;
-          case 'saveSDMK':
-            result = await saveSDMK(params.data, params.id);
-            break;
-          case 'deleteSDMK':
-            result = await deleteRecord('sdmk', params.id);
-            break;
-            
-          case 'getUnitKerja':
-            result = await getUnitKerja();
-            break;
-          case 'saveUnitKerja':
-            result = await saveUnitKerja(params.data, params.id);
-            break;
-            
-          case 'getSpesialisData':
-            result = await getSpesialis();
-            break;
-            
-          case 'getTPMData':
-            result = await getTPM();
-            break;
-          case 'saveTPM':
-            result = await saveTPM(params.data, params.id);
-            break;
-          case 'deleteTPM':
-            result = await deleteRecord('tpm', params.id);
-            break;
-            
-          case 'getRasioData':
-            result = await getRasio();
-            break;
-            
-          case 'getAnjabData':
-            result = await getAnjabABK();
-            break;
-            
-          case 'getRekapSDMK':
-            result = await getRekapSDMK();
-            break;
-          case 'saveRekapSDMK':
-            result = await upsertRecord('rekap_sdmk', params.data);
-            break;
-          case 'deleteRekapSDMK':
-            result = await deleteRecord('rekap_sdmk', params.id);
-            break;
-            
-          case 'getRekapSpesialis':
-            result = await getRekapSpesialis();
-            break;
-          case 'saveRekapSpesialis':
-            result = await upsertRecord('rekap_spesialis', params.data);
-            break;
-            
-          case 'getUsers':
-            result = await getUsers();
-            break;
-          case 'saveUser':
-            result = await saveUser(params.data);
-            break;
-          case 'deleteUser':
-            result = await deleteRecord('users', params.id);
-            break;
-            
-          case 'getActivityLog':
-            result = await getActivityLog();
-            break;
-          case 'logActivity':
-            result = await logActivityToDB(params.action, params.module, params.description);
-            break;
-            
-          default:
-            result = { success: false, message: `Unknown action: ${action}` };
-        }
-        
-        return result;
-        
-      } catch (err) {
-        console.error(`[MANDAT-API] Error in ${action}:`, err);
-        return { success: false, message: err.message || 'Terjadi kesalahan' };
-      }
-    }
-    
-    // ==================== OFFLINE FALLBACK ====================
-    
-    function handleOfflineAction(action, params) {
-      console.warn(`[MANDAT-API] Offline mode for: ${action}`);
+      // Sample SDMK
+      DATA.sdmk = [
+        { id: '1', nip: '197501012010011001', nama_lengkap: 'dr. Ahmad Fauzi', jenis_tenaga: 'Dokter Umum', unit_kerja_id: '1', jabatan: 'Dokter Umum', golongan: 'III/c', status: 'aktif' },
+        { id: '2', nip: '198203152012012002', nama_lengkap: 'Siti Nurhaliza, S.Kep', jenis_tenaga: 'Perawat', unit_kerja_id: '1', jabatan: 'Perawat Pelaksana', golongan: 'II/a', status: 'aktif' },
+        { id: '3', nip: '199001102022011003', nama_lengkap: 'Budi Santoso, Amd.Keb', jenis_tenaga: 'Bidan', unit_kerja_id: '2', jabatan: 'Bidan Pelaksana', golongan: 'I/c', status: 'aktif' },
+        { id: '4', nama_lengkap: 'dr. Ratna Dewi, Sp.PD', jenis_tenaga: 'Dokter Spesialis', unit_kerja_id: '1', jabatan: 'Dokter Spesialis Penyakit Dalam', golongan: 'IV/a', status: 'aktif' }
+      ];
       
-      const offlineHandlers = {
-        'getDashboard': () => ({ success: true, data: { total_sdmk: DATA.sdmk.length, total_dokter: DATA.sdmk.filter(s => s.jenis_tenaga?.includes('Dokter')).length, total_perawat_bidan: DATA.sdmk.filter(s => s.jenis_tenaga?.match(/Perawat|Bidan/)).length, total_unit: DATA.unit_kerja.length, total_tpm: DATA.tpm.length, total_spesialis: DATA.spesialis.length } }),
-        'getPengumuman': () => ({ success: true, data: DATA.pengumuman }),
-        'getSDMKData': () => ({ success: true, data: DATA.sdmk }),
-        'getRenbut': () => ({ success: true, data: DATA.renbut }),
-        'getUnitKerja': () => ({ success: true, data: DATA.unit_kerja }),
-        'getTPMData': () => ({ success: true, data: DATA.tpm }),
-        'getSpesialisData': () => ({ success: true, data: DATA.spesialis }),
-        'getRasioData': () => ({ success: true, data: DATA.rasio }),
-        'getAnjabData': () => ({ success: true, data: DATA.anjab }),
-        'getRekapSDMK': () => ({ success: true, data: DATA.rekap_sdmk }),
-        'getRekapSpesialis': () => ({ success: true, data: DATA.rekap_spesialis }),
-        'getUsers': () => ({ success: true, data: DATA.users }),
-        'getActivityLog': () => ({ success: true, data: DATA.activity_log })
-      };
+      // Sample Pengumuman
+      DATA.pengumuman = [
+        { id: '1', judul: 'Sosialisasi SIMPUS Baru', isi: 'Akan dilaksanakan sosialisasi sistem informasi terbaru pada tanggal 15 Januari 2026.', tipe: 'info', is_active: true, published_at: new Date().toISOString() },
+        { id: '2', judul: 'Pemeliharaan Sistem', isi: 'Sistem akan maintenance pada hari Sabtu pukul 22:00 WITA.', tipe: 'warning', is_active: true, published_at: new Date().toISOString() }
+      ];
       
-      if (offlineHandlers[action]) {
-        return offlineHandlers[action]();
-      }
+      // Sample TPM
+      DATA.tpm = [
+        { id: '1', nama_praktik: 'Praktik dr. Budi', profesi: 'Dokter Umum', pemilik: 'dr. Budi Hartono', alamat: 'Jl. Pahlawan No. 8 Tenggarong', kecamatan: 'Tenggarong', koordinat: '-0.0001,117.0001', izin_no: '123/IZIN/2025', masa_berlaku: '2027-12-31', is_active: true },
+        { id: '2', nama_praktik: 'Klinik Keluarga Sehat', profesi: 'Bidan', pemilik: 'Hj. Maryam, S.ST', alamat: 'Jl. Merdeka No. 15 Loa Kulu', kecamatan: 'Loa Kulu', koordinat: '-0.1002,117.2002', izin_no: '124/IZIN/2025', masa_berlaku: '2026-06-30', is_active: true }
+      ];
       
-      return { success: false, message: 'Tidak terhubung ke server' };
-    }
-    
-    // ==================== AUTH FUNCTIONS ====================
-    
-    async function loginSupabase(username, password) {
-      try {
-        const { data, error } = await supabaseClient.from('users').select('*').eq('username', username).eq('password', password).eq('is_active', true).single();
-        if (error) throw error;
-        if (!data) throw new Error('User not found');
-        
-        await supabaseClient.from('users').update({ last_login: new Date().toISOString() }).eq('id', data.id);
-        
-        return { success: true, data: { id: data.id, username: data.username, nama: data.nama_lengkap, role: data.role, avatar: data.avatar_url } };
-      } catch (err) {
-        return { success: false, error: 'Username atau password salah' };
-      }
-    }
-    
-    // ==================== SDMK FUNCTIONS ====================
-    
-    async function getSDMK(filters = {}) {
-      try {
-        let query = supabaseClient.from('sdmk').select('*, unit_kerja:unit_kerja_id(nama_unit, jenis)').order('nama_lengkap', { ascending: true });
-        if (filters.jenis_tenaga) query = query.eq('jenis_tenaga', filters.jenis_tenaga);
-        if (filters.unit_kerja_id) query = query.eq('unit_kerja_id', filters.unit_kerja_id);
-        if (filters.is_active !== undefined) query = query.eq('is_active', filters.is_active);
-        const { data, error } = await query;
-        if (error) throw error;
-        return { success: true, data: data || [] };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    async function saveSDMK(sdmkData, id = null) {
-      try {
-        let result;
-        if (id) { result = await supabaseClient.from('sdmk').update(sdmkData).eq('id', id).select().single(); }
-        else { result = await supabaseClient.from('sdmk').insert(sdmkData).select().single(); }
-        if (result.error) throw result.error;
-        return { success: true, data: result.data };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // ==================== PENGUMUMAN FUNCTIONS ====================
-    
-    async function getPengumuman() {
-      try {
-        const { data, error } = await supabaseClient.from('pengumuman').select('*, author:author_id(nama_lengkap)').eq('is_active', true).order('published_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
-        if (error) throw error;
-        return { success: true, data: data || [] };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    async function savePengumuman(pengumumanData, id = null) {
-      try {
-        let result;
-        if (id) { result = await supabaseClient.from('pengumuman').update(pengumumanData).eq('id', id).select().single(); }
-        else { result = await supabaseClient.from('pengumuman').insert({ ...pengumumanData, published_at: new Date().toISOString() }).select().single(); }
-        if (result.error) throw result.error;
-        return { success: true, data: result.data };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // ==================== RENBUT FUNCTIONS ====================
-    
-    async function getRenbut() {
-      try {
-        const { data, error } = await supabaseClient.from('renbut').select('*').order('tahun', { ascending: false });
-        if (error) throw error;
-        return { success: true, data: data || [] };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    async function saveRenbut(renbutData, id = null) {
-      try {
-        let result;
-        if (id) { result = await supabaseClient.from('renbut').update(renbutData).eq('id', id).select().single(); }
-        else { result = await supabaseClient.from('renbut').insert(renbutData).select().single(); }
-        if (result.error) throw result.error;
-        return { success: true, data: result.data };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // ==================== UNIT KERJA FUNCTIONS ====================
-    
-    async function getUnitKerja() {
-      try {
-        const { data, error } = await supabaseClient.from('unit_kerja').select('*').eq('status', 'aktif').order('nama_unit');
-        if (error) throw error;
-        return { success: true, data: data || [] };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    async function saveUnitKerja(unitData, id = null) {
-      try {
-        let result;
-        if (id) { result = await supabaseClient.from('unit_kerja').update(unitData).eq('id', id).select().single(); }
-        else { result = await supabaseClient.from('unit_kerja').insert(unitData).select().single(); }
-        if (result.error) throw result.error;
-        return { success: true, data: result.data };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // ==================== SPESIALIS FUNCTIONS ====================
-    
-    async function getSpesialis() {
-      try {
-        const { data, error } = await supabaseClient.from('dokter_spesialis').select('*, unit_kerja:unit_kerja_id(nama_unit)').eq('is_active', true).order('nama_lengkap');
-        if (error) throw error;
-        return { success: true, data: data || [] };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // ==================== TPM FUNCTIONS ====================
-    
-    async function getTPM(filters = {}) {
-      try {
-        let query = supabaseClient.from('tpm').select('*').eq('is_active', true).order('nama_praktik');
-        if (filters.profesi) query = query.eq('profesi', filters.profesi);
-        const { data, error } = await query;
-        if (error) throw error;
-        return { success: true, data: data || [] };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    async function saveTPM(tpmData, id = null) {
-      try {
-        let result;
-        if (id) { result = await supabaseClient.from('tpm').update(tpmData).eq('id', id).select().single(); }
-        else { result = await supabaseClient.from('tpm').insert(tpmData).select().single(); }
-        if (result.error) throw result.error;
-        return { success: true, data: result.data };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // ==================== RASIO FUNCTIONS ====================
-    
-    async function getRasio(tahun = null) {
-      try {
-        let query = supabaseClient.from('rasio_sdmk').select('*, unit_kerja:unit_kerja_id(nama_unit, jenis)').order('tahun', { ascending: false });
-        if (tahun) query = query.eq('tahun', tahun);
-        const { data, error } = await query;
-        if (error) throw error;
-        return { success: true, data: data || [] };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // ==================== ANJAB FUNCTIONS ====================
-    
-    async function getAnjabABK(unitKerjaId = null) {
-      try {
-        let query = supabaseClient.from('anjab_abk').select('*, unit_kerja:unit_kerja_id(nama_unit)').order('jabatan');
-        if (unitKerjaId) query = query.eq('unit_kerja_id', unitKerjaId);
-        const { data, error } = await query;
-        if (error) throw error;
-        return { success: true, data: data || [] };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // ==================== REKAP FUNCTIONS ====================
-    
-    async function getRekapSDMK() {
-      try {
-        const { data, error } = await supabaseClient.from('rekap_sdmk').select('*').order('tahun', { ascending: false }).order('bulan', { ascending: false });
-        if (error) throw error;
-        return { success: true, data: data || [] };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    async function getRekapSpesialis() {
-      try {
-        const { data, error } = await supabaseClient.from('rekap_spesialis').select('*').order('tahun', { ascending: false }).order('bulan', { ascending: false });
-        if (error) throw error;
-        return { success: true, data: data || [] };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // ==================== USERS FUNCTIONS ====================
-    
-    async function getUsers() {
-      try {
-        const { data, error } = await supabaseClient.from('users').select('id, username, nama_lengkap, email, role, is_active, created_at').order('username');
-        if (error) throw error;
-        return { success: true, data: data || [] };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    async function saveUser(userData) {
-      try {
-        const { data, error } = await supabaseClient.from('users').upsert({ ...userData, updated_at: new Date().toISOString() }).select().single();
-        if (error) throw error;
-        return { success: true, data };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    // ==================== LOGS FUNCTIONS ====================
-    
-    async function getActivityLog(limit = 100) {
-      try {
-        const { data, error } = await supabaseClient.from('activity_log').select('*').order('created_at', { ascending: false }).limit(limit);
-        if (error) throw error;
-        return { success: true, data: data || [] };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    async function logActivityToDB(action, module, description = '') {
-      try {
-        await supabaseClient.from('activity_log').insert({ user_id: STATE.currentUser?.id || null, username: STATE.currentUser?.username || 'anonymous', action: action, module: module, description: description, created_at: new Date().toISOString() });
-        return { success: true };
-      } catch (err) {
-        console.warn('[MANDAT] Failed to log:', err);
-        return { success: false };
-      }
-    }
-    
-    // ==================== DASHBOARD SUMMARY ====================
-    
-    async function getDashboardSummary() {
-      try {
-        const [sdmkResult, unitResult, tpmResult, spesialisResult] = await Promise.all([
-          supabaseClient.from('sdmk').select('id, jenis_tenaga, is_active', { count: 'exact' }).eq('is_active', true),
-          supabaseClient.from('unit_kerja').select('id', { count: 'exact' }).eq('status', 'aktif'),
-          supabaseClient.from('tpm').select('id', { count: 'exact' }).eq('is_active', true),
-          supabaseClient.from('dokter_spesialis').select('id', { count: 'exact' }).eq('is_active', true)
-        ]);
-        
-        const allSDMK = sdmkResult.data || [];
-        return {
-          success: true,
-          data: {
-            total_sdmk: sdmkResult.count || allSDMK.length,
-            total_dokter: allSDMK.filter(s => s.jenis_tenaga?.toLowerCase().includes('dokter')).length,
-            total_perawat_bidan: allSDMK.filter(s => s.jenis_tenaga?.toLowerCase().includes('perawat') || s.jenis_tenaga?.toLowerCase().includes('bidan')).length,
-            total_unit: unitResult.count || 0,
-            total_tpm: tpmResult.count || 0,
-            total_spesialis: spesialisResult.count || 0
-          }
-        };
-      } catch (err) {
-        return { success: true, data: { total_sdmk: 0, total_dokter: 0, total_perawat_bidan: 0, total_unit: 0, total_tpm: 0, total_spesialis: 0 } };
-      }
-    }
-    
-    // ==================== GENERIC CRUD HELPERS ====================
-    
-    async function deleteRecord(table, id) {
-      try {
-        const { error } = await supabaseClient.from(table).delete().eq('id', id);
-        if (error) throw error;
-        return { success: true };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
-    }
-    
-    async function upsertRecord(table, data) {
-      try {
-        const { data: result, error } = await supabaseClient.from(table).upsert({ ...data, updated_at: new Date().toISOString() }).select().single();
-        if (error) throw error;
-        return { success: true, data: result };
-      } catch (err) {
-        return { success: false, error: err.message };
-      }
+      // Initialize empty arrays for other data types
+      DATA.renbut = [];
+      DATA.spesialis = [];
+      DATA.rasio = [];
+      DATA.anjab = [];
+      DATA.rekap_sdmk = [];
+      DATA.rekap_spesialis = [];
+      DATA.users = [];
+      DATA.activity_log = [];
+      
+      console.log('[MANDAT] ✅ Sample data loaded successfully');
     }
 
     // ==================== INITIALIZE ON LOAD ====================
 
     document.addEventListener('DOMContentLoaded', () => {
-      // initParticles is now called inside initApp() to ensure proper order
+      // Load sample data first (for offline/demo mode)
+      loadSampleData();
+      
+      // Initialize app (particles will be called inside initApp)
       initApp();
     });
 
@@ -3273,12 +2851,13 @@
       DATA,
       navigateTo,
       showToast,
-      refreshDashboard
+      refreshDashboard,
+      loadSampleData
     };
 
     console.log(`
     %c╔══════════════════════════════════════╗
-    %c║   MANDAT v${CONFIG.VERSION} - Supabase Edition   ║
+    %c║   MANDAT v${CONFIG.VERSION} - External JS Mode ║
     %c║   ${CONFIG.ORG}  ║
     %c╚══════════════════════════════════════╝
     `, 'color: #00E5FF; font-weight: bold;', 'color: #0066FF;', 'color: #888;', 'color: #00E5FF; font-weight: bold;');
