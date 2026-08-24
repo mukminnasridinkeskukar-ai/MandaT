@@ -316,61 +316,7 @@
             display: flex;
         }
 
-        .demo-accounts-section {
-            margin-top: 22px;
-            padding-top: 20px;
-            border-top: 1px solid #e2e8f0;
-        }
 
-        .demo-accounts-title {
-            font-size: 0.78rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .demo-account-btn {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 11px 14px;
-            background: #f8fafc;
-            border: 1px solid transparent;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-bottom: 8px;
-        }
-
-        .demo-account-btn:hover {
-            border-color: var(--secondary);
-            background: #f0fdfa;
-        }
-
-        .demo-account-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .demo-account-info i {
-            font-size: 1.1rem;
-        }
-
-        .demo-account-badge {
-            padding: 4px 10px;
-            border-radius: 16px;
-            font-size: 0.72rem;
-            font-weight: 600;
-        }
-
-        .badge-super-admin { background: #fef3c7; color: #92400e; }
-        .badge-operator { background: #dbeafe; color: #1e40af; }
-        .badge-dokter { background: #dcfce7; color: #166534; }
 
         /* ============ MAIN APP LAYOUT ============ */
         .app-container {
@@ -2317,35 +2263,6 @@
                 </div>
             </form>
 
-            <div class="demo-accounts-section">
-                <div class="demo-accounts-title">
-                    <i class="fas fa-key"></i> Demo Account (Klik untuk login cepat)
-                </div>
-                
-                <div class="demo-account-btn" onclick="quickLogin('superadmin', 'super123')">
-                    <div class="demo-account-info">
-                        <i class="fas fa-user-shield" style="color: #92400e;"></i>
-                        <span><strong>Super Admin</strong></span>
-                    </div>
-                    <span class="demo-account-badge badge-super-admin">Full Akses</span>
-                </div>
-
-                <div class="demo-account-btn" onclick="quickLogin('operator', 'op123')">
-                    <div class="demo-account-info">
-                        <i class="fas fa-user-cog" style="color: #1e40af;"></i>
-                        <span><strong>Operator</strong></span>
-                    </div>
-                    <span class="demo-account-badge badge-operator">Data SDMK</span>
-                </div>
-
-                <div class="demo-account-btn" onclick="quickLogin('dokter', 'doc123')">
-                    <div class="demo-account-info">
-                        <i class="fas fa-user-md" style="color: #166534;"></i>
-                        <span><strong>Dokter</strong></span>
-                    </div>
-                    <span class="demo-account-badge badge-dokter">Dr Spesialis & TPM</span>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -2701,32 +2618,6 @@
                         alert('Logout: Session cleared.');
                         localStorage.removeItem('mandat_admin_session');
                         location.reload();
-                    }
-                });
-            });
-            
-            // Demo account quick login buttons
-            document.querySelectorAll('.demo-account-btn').forEach(function(btn, index) {
-                btn.addEventListener('click', function() {
-                    const accounts = [
-                        { username: 'superadmin', password: 'super123' },
-                        { username: 'operator', password: 'op123' },
-                        { username: 'dokter', password: 'doc123' }
-                    ];
-                    const acc = accounts[index];
-                    if (acc) {
-                        if (typeof quickLogin === 'function') {
-                            quickLogin(acc.username, acc.password);
-                        } else {
-                            // Fallback quick login
-                            const usernameInput = document.getElementById('loginUsername');
-                            const passwordInput = document.getElementById('loginPassword');
-                            if (usernameInput && passwordInput) {
-                                usernameInput.value = acc.username;
-                                passwordInput.value = acc.password;
-                                loginForm.dispatchEvent(new Event('submit'));
-                            }
-                        }
                     }
                 });
             });

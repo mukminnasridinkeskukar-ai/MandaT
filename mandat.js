@@ -41,16 +41,6 @@ function handleLogout() {
     location.reload();
 }
 
-function quickLogin(username, password) {
-    const usernameInput = document.getElementById('loginUsername');
-    const passwordInput = document.getElementById('loginPassword');
-    if (usernameInput && passwordInput) {
-        usernameInput.value = username;
-        passwordInput.value = password;
-        handleLogin(new Event('submit'));
-    }
-}
-
 console.log('✅ Critical function stubs defined');
 
 // ============ SUPABASE CONFIGURATION ============
@@ -215,15 +205,6 @@ async function handleLogin(event) {
             loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Masuk ke Panel Admin';
         }
     }
-}
-
-/**
- * Quick login for demo accounts
- */
-function quickLogin(username, password) {
-    document.getElementById('loginUsername').value = username;
-    document.getElementById('loginPassword').value = password;
-    handleLogin(new Event('submit'));
 }
 
 /**
@@ -2541,7 +2522,6 @@ function showToast(message, type = 'info') {
 
 // ============ EXPORT FUNCTIONS FOR GLOBAL ACCESS ============
 window.handleLogin = handleLogin;
-window.quickLogin = quickLogin;
 window.handleLogout = handleLogout;
 window.openLoginModal = openLoginModal;
 window.closeLoginModal = closeLoginModal;
