@@ -55,8 +55,8 @@ console.log('✅ Critical function stubs defined');
 
 // ============ SUPABASE CONFIGURATION ============
 // TODO: Replace with your actual Supabase credentials
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://ftsqrfqsbhwivyphogbv.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0c3FyZnFzYmh3aXZ5cGhvZ2J2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1NjE0MDQsImV4cCI6MjEwMzEzNzQwNH0.Zb_ukPoJXfDFzfSS--at4CDBK7VI2_-gLU6N7BVnoCs';
 
 // Initialize Supabase Client
 let supabaseClient = null;
@@ -818,14 +818,52 @@ function renderAccessDenied() {
     `;
 }
 
-// ============ DATA FETCHING ============
+// ============ DATA FETCHING (With Error Handling) ============
 async function fetchData(table) {
-    if (supabaseClient) {
-        const { data, error } = await supabaseClient.from(table).select('*');
-        if (error) throw error;
-        return data || [];
+    try {
+        if (supabaseClient) {
+            console.log(`📥 Fetching data from Supabase table: ${table}`);
+            
+            const { data, error, status } = await supabaseClient
+                .from(table)
+                .select('*')
+                .order('id', { ascending: true });
+            
+            if (error) {
+                console.error(`❌ Supabase fetch error for ${table}:`, error);
+                console.error('Error code:', error.code);
+                console.error('Error message:', error.message);
+                console.error('Error details:', error.details);
+                console.error('Error hint:', error.hint);
+                
+                // Show user-friendly error for common issues
+                if (error.code === '42P01') {
+                    showToast(`Tabel '${table}' tidak ditemukan di database. Pastikan schema sudah dijalankan.`, 'error');
+                } else if (error.code === '42501') {
+                    showToast(`Tidak memiliki akses ke tabel '${table}'. Cek RLS policies.`, 'error');
+                } else {
+                    showToast(`Gagal mengambil data dari ${table}: ${error.message}`, 'error');
+                }
+                
+                // Fallback to demo data on error
+                console.warn(`⚠️ Falling back to demo data for ${table}`);
+                return demoData[table] || [];
+            }
+            
+            console.log(`✅ Successfully fetched ${data?.length || 0} records from ${table}`);
+            return data || [];
+        } else {
+            // Demo mode - return local data
+            console.log(`🎮 Returning demo data for ${table}: ${(demoData[table] || []).length} records`);
+            return demoData[table] || [];
+        }
+    } catch (error) {
+        console.error(`💥 Unexpected error fetching data from ${table}:`, error);
+        showToast(`Error mengambil data: ${error.message}`, 'error');
+        
+        // Return empty array to prevent app crash
+        return [];
     }
-    return demoData[table] || [];
 }
 
 // ============ RENDER FUNCTIONS ============
@@ -1561,6 +1599,18 @@ function generateFormFields(table, isEdit) {
                 <label>NIP</label>
                 <input type="text" id="form-NIP" placeholder="NIP (kosongkan jika tidak ada)">
             </div>
+            <div class="form-group">
+                <label>Praktik Mandiri 1</label>
+                <input type="text" id="form-praktik_ke_1" placeholder="Tempat praktik mandiri 1">
+            </div>
+            <div class="form-group">
+                <label>Praktik Mandiri 2</label>
+                <input type="text" id="form-praktik_ke_2" placeholder="Tempat praktik mandiri 2">
+            </div>
+            <div class="form-group">
+                <label>Praktik Mandiri 3</label>
+                <input type="text" id="form-praktik_ke_3" placeholder="Tempat praktik mandiri 3">
+            </div>
         `,
         rasio: `
             <div class="form-group">
@@ -1568,32 +1618,68 @@ function generateFormFields(table, isEdit) {
                 <input type="text" id="form-kec" placeholder="Nama kecamatan" required>
             </div>
             <div class="form-group">
+                <label>Tahun</label>
+                <input type="number" id="form-tahun" placeholder="Tahun data" value="2026">
+            </div>
+            <div class="form-group">
                 <label>Jumlah Penduduk</label>
                 <input type="number" id="form-penduduk" placeholder="Jumlah penduduk" required>
             </div>
             <div class="form-group">
                 <label>Dokter Spesialis KKLP</label>
-                <input type="number" id="form-dokter_spesialis_kklip" placeholder="Jumlah">
+                <input type="number" id="form-dokter_spesialis_kklip" placeholder="Jumlah" value="0">
             </div>
             <div class="form-group">
                 <label>Dokter</label>
-                <input type="number" id="form-dokter" placeholder="Jumlah dokter">
+                <input type="number" id="form-dokter" placeholder="Jumlah dokter" value="0">
             </div>
             <div class="form-group">
                 <label>Dokter Gigi</label>
-                <input type="number" id="form-dokter_gigi" placeholder="Jumlah dokter gigi">
+                <input type="number" id="form-dokter_gigi" placeholder="Jumlah dokter gigi" value="0">
             </div>
             <div class="form-group">
                 <label>Perawat</label>
-                <input type="number" id="form-perawat" placeholder="Jumlah perawat">
+                <input type="number" id="form-perawat" placeholder="Jumlah perawat" value="0">
             </div>
             <div class="form-group">
                 <label>Bidan</label>
-                <input type="number" id="form-bidan" placeholder="Jumlah bidan">
+                <input type="number" id="form-bidan" placeholder="Jumlah bidan" value="0">
             </div>
             <div class="form-group">
                 <label>Apoteker</label>
-                <input type="number" id="form-apoteker" placeholder="Jumlah apoteker">
+                <input type="number" id="form-apoteker" placeholder="Jumlah apoteker" value="0">
+            </div>
+            <div class="form-group">
+                <label>Tenaga Promkes & Ilmu Perilaku</label>
+                <input type="number" id="form-tenaga_promosi_kesehatan_dan_ilmu_perilaku" placeholder="Jumlah" value="0">
+            </div>
+            <div class="form-group">
+                <label>Epidemiolog Kesehatan</label>
+                <input type="number" id="form-epidemiolog_kesehatan" placeholder="Jumlah" value="0">
+            </div>
+            <div class="form-group">
+                <label>Tenaga Sanitasi Lingkungan</label>
+                <input type="number" id="form-tenaga_sanitasi_lingkungan" placeholder="Jumlah" value="0">
+            </div>
+            <div class="form-group">
+                <label>Nutrisionis</label>
+                <input type="number" id="form-nutrisionis" placeholder="Jumlah" value="0">
+            </div>
+            <div class="form-group">
+                <label>Tenaga Teknologi Laboratorium Medik</label>
+                <input type="number" id="form-tenaga_teknologi_laboratorium_medik" placeholder="Jumlah" value="0">
+            </div>
+            <div class="form-group">
+                <label>Psikolog Klinis</label>
+                <input type="number" id="form-psikolog_klinis" placeholder="Jumlah" value="0">
+            </div>
+            <div class="form-group">
+                <label>Fisioterapis</label>
+                <input type="number" id="form-fisioterapis" placeholder="Jumlah" value="0">
+            </div>
+            <div class="form-group">
+                <label>Terapis Gigi dan Mulut</label>
+                <input type="number" id="form-terapis_gigi_dan_mulut" placeholder="Jumlah" value="0">
             </div>
         `,
         distribusi: `
@@ -1607,19 +1693,27 @@ function generateFormFields(table, isEdit) {
             </div>
             <div class="form-group">
                 <label>Dokter</label>
-                <input type="number" id="form-dokter" placeholder="Jumlah dokter">
+                <input type="number" id="form-dokter" placeholder="Jumlah dokter" value="0">
             </div>
             <div class="form-group">
                 <label>Perawat</label>
-                <input type="number" id="form-perawat" placeholder="Jumlah perawat">
+                <input type="number" id="form-perawat" placeholder="Jumlah perawat" value="0">
             </div>
             <div class="form-group">
                 <label>Bidan</label>
-                <input type="number" id="form-bidan" placeholder="Jumlah bidan">
+                <input type="number" id="form-bidan" placeholder="Jumlah bidan" value="0">
             </div>
             <div class="form-group">
                 <label>Nakes Lainnya</label>
-                <input type="number" id="form-nakes_lainnya" placeholder="Jumlah nakes lainnya">
+                <input type="number" id="form-nakes_lainnya" placeholder="Jumlah nakes lainnya" value="0">
+            </div>
+            <div class="form-group">
+                <label>Latitude (LAT)</label>
+                <input type="number" step="any" id="form-lat" placeholder="Contoh: -6.9175" value="0">
+            </div>
+            <div class="form-group">
+                <label>Longitude (LNG)</label>
+                <input type="number" step="any" id="form-lng" placeholder="Contoh: 107.6191" value="0">
             </div>
         `,
         profil_faskes: `
@@ -1639,6 +1733,7 @@ function generateFormFields(table, isEdit) {
                     <option value="Klinik">Klinik</option>
                     <option value="Apotek">Apotek</option>
                     <option value="Lab Kesehatan">Lab Kesehatan</option>
+                    <option value="Lainnya">Lainnya</option>
                 </select>
             </div>
             <div class="form-group">
@@ -1651,11 +1746,15 @@ function generateFormFields(table, isEdit) {
             </div>
             <div class="form-group">
                 <label>Alamat</label>
-                <input type="text" id="form-alamat" placeholder="Alamat lengkap">
+                <textarea id="form-alamat" placeholder="Alamat lengkap..." rows="2"></textarea>
             </div>
             <div class="form-group">
                 <label>Kepala</label>
                 <input type="text" id="form-kepala" placeholder="Nama kepala faskes">
+            </div>
+            <div class="form-group">
+                <label>Link Maps (Google Maps Embed)</label>
+                <input type="text" id="form-maps" placeholder="URL atau embed code maps">
             </div>
             <div class="form-group">
                 <label>Nomor Telepon</label>
@@ -1664,6 +1763,10 @@ function generateFormFields(table, isEdit) {
             <div class="form-group">
                 <label>Email</label>
                 <input type="email" id="form-email" placeholder="Email">
+            </div>
+            <div class="form-group">
+                <label>Website</label>
+                <input type="text" id="form-alamat_website" placeholder="URL website">
             </div>
         `,
         tpm: `
@@ -1677,9 +1780,10 @@ function generateFormFields(table, isEdit) {
                     <option value="Dokter Umum">Dokter Umum</option>
                     <option value="Dokter Spesialis">Dokter Spesialis</option>
                     <option value="Dokter Gigi">Dokter Gigi</option>
-                    <option value="Bidan">Bidan</option>
                     <option value="Perawat">Perawat</option>
+                    <option value="Bidan">Bidan</option>
                     <option value="Farmasis">Farmasis</option>
+                    <option value="Tenaga Kesehatan Lainnya">Tenaga Kesehatan Lainnya</option>
                 </select>
             </div>
             <div class="form-group">
@@ -1688,7 +1792,11 @@ function generateFormFields(table, isEdit) {
             </div>
             <div class="form-group">
                 <label>Alamat</label>
-                <input type="text" id="form-alamat" placeholder="Alamat praktik" required>
+                <textarea id="form-alamat" placeholder="Alamat praktik..." rows="2" required></textarea>
+            </div>
+            <div class="form-group">
+                <label>Link Maps</label>
+                <input type="text" id="form-maps" placeholder="URL Google Maps">
             </div>
             <div class="form-group">
                 <label>Jam Praktik</label>
@@ -1705,6 +1813,22 @@ function generateFormFields(table, isEdit) {
             <div class="form-group">
                 <label>Tanggal Expired SIP</label>
                 <input type="date" id="form-tanggal_expired_sip">
+            </div>
+            <div class="form-group">
+                <label>Link SIP Mandiri</label>
+                <input type="text" id="form-link_sip_mandiri" placeholder="URL SIP online">
+            </div>
+            <div class="form-group">
+                <label>Status SIP</label>
+                <select id="form-status_sip">
+                    <option value="aktif">Aktif</option>
+                    <option value="expired">Expired</option>
+                    <option value="nonaktif">Non-Aktif</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>URL Foto</label>
+                <input type="text" id="form-foto" placeholder="URL foto profil">
             </div>
         `,
         users: `
@@ -1811,56 +1935,233 @@ async function populateForm(table, id) {
     });
 }
 
-// ============ SAVE ITEM (CREATE/UPDATE) ============
+// ============ SAVE ITEM (CREATE/UPDATE) - With Validation & Type Safety ============
 async function saveItem(table) {
     try {
+        console.log(`💾 Saving data to table: ${table}, editingId: ${editingId}`);
+        
+        // Collect and validate form data
         const formData = collectFormData(table);
         
+        // Validate required fields
+        try {
+            validateFormData(table, formData);
+        } catch (validationError) {
+            showToast(validationError.message, 'warning');
+            console.warn('⚠️ Validation failed:', validationError.message);
+            return;
+        }
+        
+        // Log the data being sent
+        console.log('📤 Data to save:', JSON.stringify(formData, null, 2));
+        
         if (supabaseClient) {
+            console.log('📡 Sending to Supabase...');
+            
             if (editingId) {
-                const { error } = await supabaseClient.from(table).update(formData).eq('id', editingId);
-                if (error) throw error;
+                // UPDATE existing record
+                console.log(`🔄 Updating record ID ${editingId} in table ${table}`);
+                
+                const { data: updatedData, error } = await supabaseClient
+                    .from(table)
+                    .update(formData)
+                    .eq('id', editingId)
+                    .select();
+                    
+                if (error) {
+                    console.error('❌ Supabase update error:', error);
+                    throw new Error(error.message || 'Gagal memperbarui data di Supabase');
+                }
+                
+                console.log('✅ Update successful:', updatedData);
                 showToast('Data berhasil diperbarui!', 'success');
             } else {
-                const { error } = await supabaseClient.from(table).insert(formData);
-                if (error) throw error;
+                // INSERT new record
+                console.log(`➕ Inserting new record into table ${table}`);
+                
+                const { data: insertedData, error } = await supabaseClient
+                    .from(table)
+                    .insert(formData)
+                    .select();
+                    
+                if (error) {
+                    console.error('❌ Supabase insert error:', error);
+                    
+                    // Provide more helpful error messages
+                    if (error.code === '23505') {
+                        throw new Error('Data dengan nilai unik sudah ada (duplikat)');
+                    } else if (error.code === '23503') {
+                        throw new Error('Referensi ke tabel lain tidak valid');
+                    } else if (error.code === '23514') {
+                        throw new Error('Nilai tidak sesuai dengan constraint (cek tipe data dan pilihan)');
+                    } else if (error.message?.includes('column')) {
+                        throw new Error(`Kolom tidak ditemukan: ${error.message}`);
+                    } else {
+                        throw new Error(error.message || 'Gagal menambahkan data ke Supabase');
+                    }
+                }
+                
+                console.log('✅ Insert successful:', insertedData);
                 showToast('Data berhasil ditambahkan!', 'success');
             }
         } else {
+            // DEMO MODE - Save to local array
+            console.log('🎮 Saving in demo mode...');
+            
+            if (!demoData[table]) {
+                demoData[table] = [];
+            }
+            
             if (editingId) {
+                // Update in demo data
                 const index = demoData[table].findIndex(d => d.id === editingId);
                 if (index !== -1) {
                     demoData[table][index] = { ...demoData[table][index], ...formData };
+                    console.log('✅ Demo update successful');
                 }
                 showToast('Data berhasil diperbarui! (Demo Mode)', 'success');
             } else {
-                const newId = Math.max(...demoData[table].map(d => d.id), 0) + 1;
+                // Insert in demo data
+                const newId = demoData[table].length > 0 
+                    ? Math.max(...demoData[table].map(d => d.id)) + 1 
+                    : 1;
                 demoData[table].push({ id: newId, ...formData });
+                console.log('✅ Demo insert successful with ID:', newId);
                 showToast('Data berhasil ditambahkan! (Demo Mode)', 'success');
             }
         }
         
         closeModal();
-        loadPage(currentPage);
+        
+        // Reload current page to show updated data
+        if (currentPage && currentPage.startsWith('admin-')) {
+            loadPage(currentPage);
+        } else if (currentTable) {
+            loadPage(currentTable);
+        }
         
     } catch (error) {
-        console.error('Error saving:', error);
-        showToast('Error: ' + error.message, 'error');
+        console.error('💥 Error in saveItem():', error);
+        
+        // Show user-friendly error message
+        let errorMessage = 'Terjadi kesalahan saat menyimpan data';
+        
+        if (error.message) {
+            if (error.message.includes('duplicate') || error.message.includes('unik')) {
+                errorMessage = 'Data duplikat! Nilai unik sudah digunakan.';
+            } else if (error.message.includes('column') || error.message.includes('kolom')) {
+                errorMessage = 'Struktur kolom tidak cocok. Periksa nama field.';
+            } else if (error.message.includes('constraint') || error.message.includes('constraint')) {
+                errorMessage = 'Data tidak valid. Periksa format input.';
+            } else if (error.message.includes('Field wajib')) {
+                errorMessage = error.message;  // Show validation message as-is
+            } else {
+                errorMessage = error.message;
+            }
+        }
+        
+        showToast(errorMessage, 'error');
     }
 }
 
-// ============ COLLECT FORM DATA ============
+// ============ COLLECT FORM DATA (With Type Conversion) ============
 function collectFormData(table) {
     const form = document.getElementById('modalBody');
     const inputs = form.querySelectorAll('input, select, textarea');
     const data = {};
     
+    // Define which fields should be converted to numbers
+    const numberFields = {
+        // renbut
+        'kebutuhan': true, 'existing': true, 'tahun': true,
+        // anjab_abk
+        'beban': true, 'kebutuhan': true, 'existing': true,
+        // bezetting
+        'updated_tahun': true,
+        // rasio - all numeric fields
+        'penduduk': true, 'dokter_spesialis_kklip': true, 'dokter': true, 
+        'dokter_gigi': true, 'perawat': true, 'bidan': true, 'apoteker': true,
+        'tenaga_promosi_kesehatan_dan_ilmu_perilaku': true, 'epidemiolog_kesehatan': true,
+        'tenaga_sanitasi_lingkungan': true, 'nutrisionis': true, 
+        'tenaga_teknologi_laboratorium_medik': true, 'psikolog_klinis': true,
+        'fisioterapis': true, 'terapis_gigi_dan_mulut': true, 'tahun': true,
+        // distribusi
+        'total': true, 'dokter': true, 'perawat': true, 'bidan': true, 
+        'nakes_lainnya': true, 'lat': true, 'lng': true,
+        // dashboard
+        'value': true
+    };
+    
+    // Define fields that should be empty string instead of null
+    const optionalTextFields = [
+        'keterangan', 'dokumen', 'download_bazetting', 'nomor_STR', 
+        'nomor_SIP', 'NIK', 'NIP', 'praktik_ke_1', 'praktik_ke_2', 'praktik_ke_3',
+        'nip', 'no_telepon', 'alamat', 'pendidikan', 'foto_url', 'file_url',
+        'maps', 'alamat_website', 'link_sip_mandiri', 'foto', 'jam_praktik',
+        'nomor_telpon', 'email', 'desa_kelurahan', 'kepala'
+    ];
+    
     inputs.forEach(input => {
         const key = input.id.replace('form-', '');
-        data[key] = input.value;
+        let value = input.value;
+        
+        // Skip empty values for optional fields (let DB handle defaults)
+        if (value === '' || value === null || value === undefined) {
+            if (!optionalTextFields.includes(key)) {
+                // For required fields, still include empty to trigger validation error
+                data[key] = value;
+            }
+            // For optional text fields, don't include them in the insert/update
+            return;
+        }
+        
+        // Convert to number if needed
+        if (numberFields[key] && input.type === 'number') {
+            value = parseFloat(value);
+            if (input.step === 'any') {
+                value = parseFloat(value);  // Keep decimal for lat/lng
+            } else {
+                value = parseInt(value);   // Integer for counts
+            }
+        }
+        
+        data[key] = value;
     });
     
+    console.log(`📝 Collected form data for ${table}:`, data);
     return data;
+}
+
+// ============ VALIDATE FORM DATA BEFORE SAVE ============
+function validateFormData(table, data) {
+    const requiredFields = {
+        pengumuman: ['tanggal', 'judul', 'isi'],
+        renbut: ['nama_unit', 'jenis', 'kebutuhan', 'existing', 'tahun'],
+        anjab_abk: ['jabatan', 'unit', 'beban', 'kebutuhan', 'existing'],
+        bezetting: ['unit_kerja', 'updated_tahun'],
+        dokter_spesialis: ['nama_lengkap', 'unit_kerja', 'spesialisasi'],
+        rasio: ['kec', 'penduduk'],
+        distribusi: ['kecamatan', 'total'],
+        profil_faskes: ['kode_unit', 'nama_fasyankes', 'jenis', 'kecamatan'],
+        tpm: ['nama_lengkap', 'jenis_profesi', 'nama_praktik_mandiri', 'alamat'],
+        users: ['username', 'password', 'role', 'nama'],
+        data_sdmk: ['nik', 'nama_lengkap', 'jenis_tenaga', 'unit_kerja']
+    };
+    
+    const required = requiredFields[table] || [];
+    const missing = [];
+    
+    required.forEach(field => {
+        if (!data[field] || data[field] === '' || data[field] === null || data[field] === undefined) {
+            missing.push(field);
+        }
+    });
+    
+    if (missing.length > 0) {
+        throw new Error(`Field wajib belum diisi: ${missing.join(', ')}`);
+    }
+    
+    return true;
 }
 
 // ============ DELETE ITEM ============
