@@ -295,7 +295,7 @@
 <body class="bg-[#0A2540] text-white overflow-x-hidden" data-user-role="">
   
   <!-- ==================== LANDING PAGE ==================== -->
-  <div id="landing" class="fixed inset-0 z-[9999] flex items-center justify-center health-gradient">
+  <div id="landing" class="fixed inset-0 z-[9999] flex items-center justify-center health-gradient" style="opacity: 1; transition: opacity 0.5s ease;">
     <div class="absolute inset-0 overflow-hidden">
       <canvas id="particle-canvas" class="absolute inset-0 w-full h-full opacity-70"></canvas>
     </div>
@@ -1114,27 +1114,35 @@
       console.log(`[MANDAT] Initializing ${CONFIG.APP_NAME} v${CONFIG.VERSION}...`);
       
       try {
-        // Initialize Supabase client
-        if (typeof initSupabase === 'function') {
-          STATE.isConnected = initSupabase();
-        }
+        // 1. Initialize particles FIRST for landing page visual
+        initParticles();
         
-        // Check for existing session
+        // 2. Check for existing session
         checkExistingSession();
         
-        // Start landing animation
+        // 3. Initialize Supabase client (with graceful fallback)
+        if (typeof initSupabase === 'function') {
+          STATE.isConnected = initSupabase();
+          if (!STATE.isConnected) {
+            console.warn('[MANDAT] ⚠️ Supabase not configured - running in offline demo mode');
+          }
+        }
+        
+        // 4. Start landing animation
         await runLandingAnimation();
         
-        // Load initial data
+        // 5. Load initial data (with offline fallback)
         await loadInitialData();
         
-        // Setup event listeners
+        // 6. Setup event listeners
         setupEventListeners();
         
         console.log('[MANDAT] ✅ Application initialized successfully');
       } catch (error) {
         console.error('[MANDAT] ❌ Initialization error:', error);
         showToast('Gagal menginisialisasi aplikasi', 'error');
+        // Still show app even on error
+        hideLandingPage();
       }
     }
 
@@ -1146,6 +1154,14 @@
         let progress = 0;
         const bar = document.getElementById('loading-bar');
         const percent = document.getElementById('loading-percent');
+        const landing = document.getElementById('landing');
+        
+        // Safety: ensure landing is visible
+        if (landing) {
+          landing.classList.remove('hidden');
+          landing.style.opacity = '1';
+          landing.style.display = 'flex';
+        }
         
         const interval = setInterval(() => {
           progress += Math.random() * 15 + 5;
@@ -1154,21 +1170,39 @@
             clearInterval(interval);
             
             setTimeout(() => {
-              document.getElementById('landing').style.opacity = '0';
-              document.getElementById('landing').style.transition = 'opacity 0.5s ease';
-              
-              setTimeout(() => {
-                document.getElementById('landing').classList.add('hidden');
-                document.getElementById('app').classList.remove('hidden');
-                resolve();
-              }, 500);
+              hideLandingPage();
+              resolve();
             }, 300);
           }
           
-          bar.style.width = `${progress}%`;
-          percent.textContent = `${Math.round(progress)}%`;
+          if (bar) bar.style.width = `${progress}%`;
+          if (percent) percent.textContent = `${Math.round(progress)}%`;
         }, 150);
       });
+    }
+    
+    /**
+     * Hide landing page and show main app
+     */
+    function hideLandingPage() {
+      const landing = document.getElementById('landing');
+      const app = document.getElementById('app');
+      
+      if (landing) {
+        landing.style.opacity = '0';
+        landing.style.transition = 'opacity 0.5s ease';
+      }
+      
+      setTimeout(() => {
+        if (landing) {
+          landing.classList.add('hidden');
+          landing.style.display = 'none';
+        }
+        if (app) {
+          app.classList.remove('hidden');
+          app.style.display = 'block';
+        }
+      }, 500);
     }
 
     /**
@@ -1194,6 +1228,12 @@
       showToast('Memuat data...', 'info');
       
       try {
+        // Check if callAPI is available (it should be defined by now)
+        if (typeof callAPI !== 'function') {
+          console.error('[MANDAT] ❌ callAPI is not defined! Check script loading order.');
+          throw new Error('callAPI function not found');
+        }
+        
         const results = await Promise.allSettled([
           callAPI('getDashboard'),
           callAPI('getPengumuman'),
@@ -1201,15 +1241,15 @@
         ]);
 
         // Process results
-        if (results[0].status === 'fulfilled' && results[0].value.success) {
+        if (results[0].status === 'fulfilled' && results[0].value?.success) {
           updateDashboardStats(results[0].value.data);
         }
         
-        if (results[1].status === 'fulfilled' && results[1].value.success) {
+        if (results[1].status === 'fulfilled' && results[1].value?.success) {
           DATA.pengumuman = results[1].value.data || [];
         }
         
-        if (results[2].status === 'fulfilled' && results[2].value.success) {
+        if (results[2].status === 'fulfilled' && results[2].value?.success) {
           DATA.unit_kerja = results[2].value.data || [];
         }
 
@@ -1219,10 +1259,56 @@
         
         showToast('Data berhasil dimuat', 'success');
       } catch (error) {
-        console.warn('[MANDAT] Using cached/offline mode');
-        showToast('Mode offline - menggunakan data tersimpan', 'warning');
+        console.warn('[MANDAT] Using cached/offline mode:', error.message);
+        showToast('Mode demo - menggunakan data sample', 'warning');
         updateDBStatus(false);
+        
+        // Load sample data for demo mode
+        loadSampleData();
       }
+    }
+    
+    /**
+     * Load sample/demo data when offline or not configured
+     */
+    function loadSampleData() {
+      // Sample unit kerja data
+      DATA.unit_kerja = [
+        { id: '1', nama_unit: 'Puskesmas Tenggarong', jenis: 'Puskesmas', status: 'aktif', kecamatan: 'Tenggarong' },
+        { id: '2', nama_unit: 'Puskesmas Loa Kulu', jenis: 'Puskesmas', status: 'aktif', kecamatan: 'Loa Kulu' },
+        { id: '3', nama_unit: 'RSUD AM Parikesit', jenis: 'Rumah Sakit', status: 'aktif', kecamatan: 'Tenggarong' },
+        { id: '4', nama_unit: 'Klinik Pratama Sehat', jenis: 'Klinik', status: 'aktif', kecamatan: 'Tenggarong Seberang' }
+      ];
+      
+      // Sample SDMK data
+      DATA.sdmk = [
+        { id: '1', nama_lengkap: 'Dr. Ahmad Fauzi, Sp.PD', nip: '197501012000121001', jenis_tenaga: 'Dokter Spesialis', pendidikan: 'S2 Kedokteran Dalam', unit_kerja_nama: 'RSUD AM Parikesit', status_kepegawaian: 'PNS', no_telepon: '081234567890' },
+        { id: '2', nama_lengkap: 'Dr. Siti Nurhaliza', nip: '198002032005122001', jenis_tenaga: 'Dokter Umum', pendidikan: 'S1 Kedokteran Umum', unit_kerja_nama: 'Puskesmas Tenggarong', status_kepegawaian: 'PNS', no_telepon: '081234567891' },
+        { id: '3', nama_lengkap: 'Nn. Dewi Lestari, S.Kep', nip: '198505152008012001', jenis_tenaga: 'Perawat', pendidikan: 'S1 Keperawatan', unit_kerja_nama: 'RSUD AM Parikesit', status_kepegawaian: 'PPPK', no_telepon: '081234567892' },
+        { id: '4', nama_lengkap: 'Bd. Ratna Sari, Amd.Keb', nip: '199008202010122001', jenis_tenaga: 'Bidan', pendidikan: 'D3 Kebidanan', unit_kerja_nama: 'Puskesmas Loa Kulu', status_kepegawaian: 'Honorer', no_telepon: '081234567893' }
+      ];
+      
+      // Sample pengumuman
+      DATA.pengumuman = [
+        { id: '1', judul: 'Selamat Datang di MANDAT v1.0', isi: 'Sistem Manajemen SDM Kesehatan baru telah diluncurkan.', is_active: true, published_at: new Date().toISOString() },
+        { id: '2', judul: 'Mode Demo Aktif', isi: 'Anda sedang menjalankan dalam mode demo. Hubungi admin untuk konfigurasi Supabase.', is_active: true, published_at: new Date().toISOString() }
+      ];
+      
+      // Sample TPM
+      DATA.tpm = [
+        { id: '1', nama_praktik: 'Praktik Dr. Budi', profesi: 'Dokter Umum', alamat: 'Jl. Sudirman No. 10', jam_operasional: '17:00-21:00' },
+        { id: '2', nama_praktik: 'Klinik Sehter Mandiri', profesi: 'Bidan', alamat: 'Jl. Kartini No. 5', jam_operasional: '08:00-15:00' }
+      ];
+      
+      // Update dashboard with sample data
+      updateDashboardStats({
+        total_sdmk: DATA.sdmk.length,
+        total_dokter: DATA.sdmk.filter(s => s.jenis_tenaga?.includes('Dokter')).length,
+        total_perawat_bidan: DATA.sdmk.filter(s => s.jenis_tenaga?.match(/Perawat|Bidan/)).length,
+        total_unit: DATA.unit_kerja.length,
+        total_tpm: DATA.tpm.length,
+        total_spesialis: 0
+      });
     }
 
     // ==================== NAVIGATION ====================
@@ -2689,10 +2775,10 @@
     }
 
     // ============================================================
-    // SUPABASE API CLIENT (Embedded - No External Dependency)
+    // SUPABASE API CLIENT (Embedded - Self-Contained)
     // ============================================================
     
-    // ⚠️ KONFIGURASI: Ganti dengan credential Supabase kamu
+    // ⚠️ KONFIGURASI SUPABASE - Sudah terintegrasi dengan credential Anda
     const SUPABASE_URL = 'https://ftsqrfqsbhwivyphogbv.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0c3FyZnFzYmh3aXZ5cGhvZ2J2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1NjE0MDQsImV4cCI6MjEwMzEzNzQwNH0.Zb_ukPoJXfDFzfSS--at4CDBK7VI2_-gLU6N7BVnoCs';
     
@@ -2719,7 +2805,6 @@
     
     /**
      * MAIN API FUNCTION - Router untuk semua database operations
-     * Menggantikan callAPI dari Google Apps Script
      */
     async function callAPI(action, params = {}) {
       console.log(`[MANDAT-API] ${action}`, params);
@@ -2727,7 +2812,6 @@
       // Initialize jika belum
       if (!supabaseClient) {
         if (!initSupabase()) {
-          // Fallback: coba load data dari localStorage (offline mode)
           return handleOfflineAction(action, params);
         }
       }
@@ -2736,17 +2820,14 @@
         let result;
         
         switch (action) {
-          // ==================== AUTH ====================
           case 'login':
             result = await loginSupabase(params.username, params.password);
             break;
             
-          // ==================== DASHBOARD ====================
           case 'getDashboard':
             result = await getDashboardSummary();
             break;
             
-          // ==================== PENGUMUMAN ====================
           case 'getPengumuman':
             result = await getPengumuman();
             break;
@@ -2757,7 +2838,6 @@
             result = await deleteRecord('pengumuman', params.id);
             break;
             
-          // ==================== RENBUT ====================
           case 'getRenbut':
             result = await getRenbut();
             break;
@@ -2768,7 +2848,6 @@
             result = await deleteRecord('renbut', params.id);
             break;
             
-          // ==================== SDMK ====================
           case 'getSDMKData':
             result = await getSDMK();
             break;
@@ -2779,20 +2858,17 @@
             result = await deleteRecord('sdmk', params.id);
             break;
             
-          // ==================== UNIT KERJA ====================
           case 'getUnitKerja':
             result = await getUnitKerja();
             break;
           case 'saveUnitKerja':
             result = await saveUnitKerja(params.data, params.id);
             break;
-          
-          // ==================== SPESIALIS ====================
+            
           case 'getSpesialisData':
             result = await getSpesialis();
             break;
-          
-          // ==================== TPM ====================
+            
           case 'getTPMData':
             result = await getTPM();
             break;
@@ -2802,18 +2878,15 @@
           case 'deleteTPM':
             result = await deleteRecord('tpm', params.id);
             break;
-          
-          // ==================== RASIO ====================
+            
           case 'getRasioData':
             result = await getRasio();
             break;
-          
-          // ==================== ANJAB ====================
+            
           case 'getAnjabData':
             result = await getAnjabABK();
             break;
-          
-          // ==================== REKAP ====================
+            
           case 'getRekapSDMK':
             result = await getRekapSDMK();
             break;
@@ -2823,14 +2896,14 @@
           case 'deleteRekapSDMK':
             result = await deleteRecord('rekap_sdmk', params.id);
             break;
+            
           case 'getRekapSpesialis':
             result = await getRekapSpesialis();
             break;
           case 'saveRekapSpesialis':
             result = await upsertRecord('rekap_spesialis', params.data);
             break;
-          
-          // ==================== USERS ====================
+            
           case 'getUsers':
             result = await getUsers();
             break;
@@ -2840,8 +2913,7 @@
           case 'deleteUser':
             result = await deleteRecord('users', params.id);
             break;
-          
-          // ==================== LOGS ====================
+            
           case 'getActivityLog':
             result = await getActivityLog();
             break;
@@ -2866,19 +2938,8 @@
     function handleOfflineAction(action, params) {
       console.warn(`[MANDAT-API] Offline mode for: ${action}`);
       
-      // Return cached data if available
       const offlineHandlers = {
-        'getDashboard': () => ({ 
-          success: true, 
-          data: { 
-            total_sdmk: DATA.sdmk.length,
-            total_dokter: DATA.sdmk.filter(s => s.jenis_tenaga?.includes('Dokter')).length,
-            total_perawat_bidan: DATA.sdmk.filter(s => s.jenis_tenaga?.match(/Perawat|Bidan/)).length,
-            total_unit: DATA.unit_kerja.length,
-            total_tpm: DATA.tpm.length,
-            total_spesialis: DATA.spesialis.length
-          } 
-        }),
+        'getDashboard': () => ({ success: true, data: { total_sdmk: DATA.sdmk.length, total_dokter: DATA.sdmk.filter(s => s.jenis_tenaga?.includes('Dokter')).length, total_perawat_bidan: DATA.sdmk.filter(s => s.jenis_tenaga?.match(/Perawat|Bidan/)).length, total_unit: DATA.unit_kerja.length, total_tpm: DATA.tpm.length, total_spesialis: DATA.spesialis.length } }),
         'getPengumuman': () => ({ success: true, data: DATA.pengumuman }),
         'getSDMKData': () => ({ success: true, data: DATA.sdmk }),
         'getRenbut': () => ({ success: true, data: DATA.renbut }),
@@ -2904,33 +2965,13 @@
     
     async function loginSupabase(username, password) {
       try {
-        const { data, error } = await supabaseClient
-          .from('users')
-          .select('*')
-          .eq('username', username)
-          .eq('password', password)
-          .eq('is_active', true)
-          .single();
-        
+        const { data, error } = await supabaseClient.from('users').select('*').eq('username', username).eq('password', password).eq('is_active', true).single();
         if (error) throw error;
         if (!data) throw new Error('User not found');
         
-        // Update last login
-        await supabaseClient
-          .from('users')
-          .update({ last_login: new Date().toISOString() })
-          .eq('id', data.id);
+        await supabaseClient.from('users').update({ last_login: new Date().toISOString() }).eq('id', data.id);
         
-        return {
-          success: true,
-          data: {
-            id: data.id,
-            username: data.username,
-            nama: data.nama_lengkap,
-            role: data.role,
-            avatar: data.avatar_url
-          }
-        };
+        return { success: true, data: { id: data.id, username: data.username, nama: data.nama_lengkap, role: data.role, avatar: data.avatar_url } };
       } catch (err) {
         return { success: false, error: 'Username atau password salah' };
       }
@@ -2940,15 +2981,10 @@
     
     async function getSDMK(filters = {}) {
       try {
-        let query = supabaseClient
-          .from('sdmk')
-          .select('*, unit_kerja:unit_kerja_id(nama_unit, jenis)')
-          .order('nama_lengkap', { ascending: true });
-        
+        let query = supabaseClient.from('sdmk').select('*, unit_kerja:unit_kerja_id(nama_unit, jenis)').order('nama_lengkap', { ascending: true });
         if (filters.jenis_tenaga) query = query.eq('jenis_tenaga', filters.jenis_tenaga);
         if (filters.unit_kerja_id) query = query.eq('unit_kerja_id', filters.unit_kerja_id);
         if (filters.is_active !== undefined) query = query.eq('is_active', filters.is_active);
-        
         const { data, error } = await query;
         if (error) throw error;
         return { success: true, data: data || [] };
@@ -2960,11 +2996,8 @@
     async function saveSDMK(sdmkData, id = null) {
       try {
         let result;
-        if (id) {
-          result = await supabaseClient.from('sdmk').update(sdmkData).eq('id', id).select().single();
-        } else {
-          result = await supabaseClient.from('sdmk').insert(sdmkData).select().single();
-        }
+        if (id) { result = await supabaseClient.from('sdmk').update(sdmkData).eq('id', id).select().single(); }
+        else { result = await supabaseClient.from('sdmk').insert(sdmkData).select().single(); }
         if (result.error) throw result.error;
         return { success: true, data: result.data };
       } catch (err) {
@@ -2976,13 +3009,7 @@
     
     async function getPengumuman() {
       try {
-        const { data, error } = await supabaseClient
-          .from('pengumuman')
-          .select('*, author:author_id(nama_lengkap)')
-          .eq('is_active', true)
-          .order('published_at', { ascending: false, nullsFirst: false })
-          .order('created_at', { ascending: false });
-        
+        const { data, error } = await supabaseClient.from('pengumuman').select('*, author:author_id(nama_lengkap)').eq('is_active', true).order('published_at', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false });
         if (error) throw error;
         return { success: true, data: data || [] };
       } catch (err) {
@@ -2993,12 +3020,8 @@
     async function savePengumuman(pengumumanData, id = null) {
       try {
         let result;
-        const dataToSave = { ...pengumumanData, published_at: new Date().toISOString() };
-        if (id) {
-          result = await supabaseClient.from('pengumuman').update(pengumumanData).eq('id', id).select().single();
-        } else {
-          result = await supabaseClient.from('pengumuman').insert(dataToSave).select().single();
-        }
+        if (id) { result = await supabaseClient.from('pengumuman').update(pengumumanData).eq('id', id).select().single(); }
+        else { result = await supabaseClient.from('pengumuman').insert({ ...pengumumanData, published_at: new Date().toISOString() }).select().single(); }
         if (result.error) throw result.error;
         return { success: true, data: result.data };
       } catch (err) {
@@ -3010,10 +3033,7 @@
     
     async function getRenbut() {
       try {
-        const { data, error } = await supabaseClient
-          .from('renbut')
-          .select('*')
-          .order('tahun', { ascending: false });
+        const { data, error } = await supabaseClient.from('renbut').select('*').order('tahun', { ascending: false });
         if (error) throw error;
         return { success: true, data: data || [] };
       } catch (err) {
@@ -3024,11 +3044,8 @@
     async function saveRenbut(renbutData, id = null) {
       try {
         let result;
-        if (id) {
-          result = await supabaseClient.from('renbut').update(renbutData).eq('id', id).select().single();
-        } else {
-          result = await supabaseClient.from('renbut').insert(renbutData).select().single();
-        }
+        if (id) { result = await supabaseClient.from('renbut').update(renbutData).eq('id', id).select().single(); }
+        else { result = await supabaseClient.from('renbut').insert(renbutData).select().single(); }
         if (result.error) throw result.error;
         return { success: true, data: result.data };
       } catch (err) {
@@ -3040,11 +3057,7 @@
     
     async function getUnitKerja() {
       try {
-        const { data, error } = await supabaseClient
-          .from('unit_kerja')
-          .select('*')
-          .eq('status', 'aktif')
-          .order('nama_unit');
+        const { data, error } = await supabaseClient.from('unit_kerja').select('*').eq('status', 'aktif').order('nama_unit');
         if (error) throw error;
         return { success: true, data: data || [] };
       } catch (err) {
@@ -3055,11 +3068,8 @@
     async function saveUnitKerja(unitData, id = null) {
       try {
         let result;
-        if (id) {
-          result = await supabaseClient.from('unit_kerja').update(unitData).eq('id', id).select().single();
-        } else {
-          result = await supabaseClient.from('unit_kerja').insert(unitData).select().single();
-        }
+        if (id) { result = await supabaseClient.from('unit_kerja').update(unitData).eq('id', id).select().single(); }
+        else { result = await supabaseClient.from('unit_kerja').insert(unitData).select().single(); }
         if (result.error) throw result.error;
         return { success: true, data: result.data };
       } catch (err) {
@@ -3071,11 +3081,7 @@
     
     async function getSpesialis() {
       try {
-        const { data, error } = await supabaseClient
-          .from('dokter_spesialis')
-          .select('*, unit_kerja:unit_kerja_id(nama_unit)')
-          .eq('is_active', true)
-          .order('nama_lengkap');
+        const { data, error } = await supabaseClient.from('dokter_spesialis').select('*, unit_kerja:unit_kerja_id(nama_unit)').eq('is_active', true).order('nama_lengkap');
         if (error) throw error;
         return { success: true, data: data || [] };
       } catch (err) {
@@ -3087,14 +3093,8 @@
     
     async function getTPM(filters = {}) {
       try {
-        let query = supabaseClient
-          .from('tpm')
-          .select('*')
-          .eq('is_active', true)
-          .order('nama_praktik');
-        
+        let query = supabaseClient.from('tpm').select('*').eq('is_active', true).order('nama_praktik');
         if (filters.profesi) query = query.eq('profesi', filters.profesi);
-        
         const { data, error } = await query;
         if (error) throw error;
         return { success: true, data: data || [] };
@@ -3106,11 +3106,8 @@
     async function saveTPM(tpmData, id = null) {
       try {
         let result;
-        if (id) {
-          result = await supabaseClient.from('tpm').update(tpmData).eq('id', id).select().single();
-        } else {
-          result = await supabaseClient.from('tpm').insert(tpmData).select().single();
-        }
+        if (id) { result = await supabaseClient.from('tpm').update(tpmData).eq('id', id).select().single(); }
+        else { result = await supabaseClient.from('tpm').insert(tpmData).select().single(); }
         if (result.error) throw result.error;
         return { success: true, data: result.data };
       } catch (err) {
@@ -3122,13 +3119,8 @@
     
     async function getRasio(tahun = null) {
       try {
-        let query = supabaseClient
-          .from('rasio_sdmk')
-          .select('*, unit_kerja:unit_kerja_id(nama_unit, jenis)')
-          .order('tahun', { ascending: false });
-        
+        let query = supabaseClient.from('rasio_sdmk').select('*, unit_kerja:unit_kerja_id(nama_unit, jenis)').order('tahun', { ascending: false });
         if (tahun) query = query.eq('tahun', tahun);
-        
         const { data, error } = await query;
         if (error) throw error;
         return { success: true, data: data || [] };
@@ -3141,13 +3133,8 @@
     
     async function getAnjabABK(unitKerjaId = null) {
       try {
-        let query = supabaseClient
-          .from('anjab_abk')
-          .select('*, unit_kerja:unit_kerja_id(nama_unit)')
-          .order('jabatan');
-        
+        let query = supabaseClient.from('anjab_abk').select('*, unit_kerja:unit_kerja_id(nama_unit)').order('jabatan');
         if (unitKerjaId) query = query.eq('unit_kerja_id', unitKerjaId);
-        
         const { data, error } = await query;
         if (error) throw error;
         return { success: true, data: data || [] };
@@ -3160,11 +3147,7 @@
     
     async function getRekapSDMK() {
       try {
-        const { data, error } = await supabaseClient
-          .from('rekap_sdmk')
-          .select('*')
-          .order('tahun', { ascending: false })
-          .order('bulan', { ascending: false });
+        const { data, error } = await supabaseClient.from('rekap_sdmk').select('*').order('tahun', { ascending: false }).order('bulan', { ascending: false });
         if (error) throw error;
         return { success: true, data: data || [] };
       } catch (err) {
@@ -3174,11 +3157,7 @@
     
     async function getRekapSpesialis() {
       try {
-        const { data, error } = await supabaseClient
-          .from('rekap_spesialis')
-          .select('*')
-          .order('tahun', { ascending: false })
-          .order('bulan', { ascending: false });
+        const { data, error } = await supabaseClient.from('rekap_spesialis').select('*').order('tahun', { ascending: false }).order('bulan', { ascending: false });
         if (error) throw error;
         return { success: true, data: data || [] };
       } catch (err) {
@@ -3190,10 +3169,7 @@
     
     async function getUsers() {
       try {
-        const { data, error } = await supabaseClient
-          .from('users')
-          .select('id, username, nama_lengkap, email, role, is_active, created_at')
-          .order('username');
+        const { data, error } = await supabaseClient.from('users').select('id, username, nama_lengkap, email, role, is_active, created_at').order('username');
         if (error) throw error;
         return { success: true, data: data || [] };
       } catch (err) {
@@ -3203,15 +3179,7 @@
     
     async function saveUser(userData) {
       try {
-        const { data, error } = await supabaseClient
-          .from('users')
-          .upsert({
-            ...userData,
-            updated_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-        
+        const { data, error } = await supabaseClient.from('users').upsert({ ...userData, updated_at: new Date().toISOString() }).select().single();
         if (error) throw error;
         return { success: true, data };
       } catch (err) {
@@ -3223,11 +3191,7 @@
     
     async function getActivityLog(limit = 100) {
       try {
-        const { data, error } = await supabaseClient
-          .from('activity_log')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(limit);
+        const { data, error } = await supabaseClient.from('activity_log').select('*').order('created_at', { ascending: false }).limit(limit);
         if (error) throw error;
         return { success: true, data: data || [] };
       } catch (err) {
@@ -3237,14 +3201,7 @@
     
     async function logActivityToDB(action, module, description = '') {
       try {
-        await supabaseClient.from('activity_log').insert({
-          user_id: STATE.currentUser?.id || null,
-          username: STATE.currentUser?.username || 'anonymous',
-          action: action,
-          module: module,
-          description: description,
-          created_at: new Date().toISOString()
-        });
+        await supabaseClient.from('activity_log').insert({ user_id: STATE.currentUser?.id || null, username: STATE.currentUser?.username || 'anonymous', action: action, module: module, description: description, created_at: new Date().toISOString() });
         return { success: true };
       } catch (err) {
         console.warn('[MANDAT] Failed to log:', err);
@@ -3256,7 +3213,6 @@
     
     async function getDashboardSummary() {
       try {
-        // Parallel queries untuk performa
         const [sdmkResult, unitResult, tpmResult, spesialisResult] = await Promise.all([
           supabaseClient.from('sdmk').select('id, jenis_tenaga, is_active', { count: 'exact' }).eq('is_active', true),
           supabaseClient.from('unit_kerja').select('id', { count: 'exact' }).eq('status', 'aktif'),
@@ -3264,34 +3220,20 @@
           supabaseClient.from('dokter_spesialis').select('id', { count: 'exact' }).eq('is_active', true)
         ]);
         
-        // Hitung dokter dan perawat/bidan
         const allSDMK = sdmkResult.data || [];
-        const dokterCount = allSDMK.filter(s => s.jenis_tenaga?.toLowerCase().includes('dokter')).length;
-        const perawatBidanCount = allSDMK.filter(s => 
-          s.jenis_tenaga?.toLowerCase().includes('perawat') || 
-          s.jenis_tenaga?.toLowerCase().includes('bidan')
-        ).length;
-        
         return {
           success: true,
           data: {
             total_sdmk: sdmkResult.count || allSDMK.length,
-            total_dokter: dokterCount,
-            total_perawat_bidan: perawatBidanCount,
+            total_dokter: allSDMK.filter(s => s.jenis_tenaga?.toLowerCase().includes('dokter')).length,
+            total_perawat_bidan: allSDMK.filter(s => s.jenis_tenaga?.toLowerCase().includes('perawat') || s.jenis_tenaga?.toLowerCase().includes('bidan')).length,
             total_unit: unitResult.count || 0,
             total_tpm: tpmResult.count || 0,
             total_spesialis: spesialisResult.count || 0
           }
         };
       } catch (err) {
-        console.error('Dashboard summary error:', err);
-        return { 
-          success: true, 
-          data: { 
-            total_sdmk: 0, total_dokter: 0, total_perawat_bidan: 0, 
-            total_unit: 0, total_tpm: 0, total_spesialis: 0 
-          } 
-        };
+        return { success: true, data: { total_sdmk: 0, total_dokter: 0, total_perawat_bidan: 0, total_unit: 0, total_tpm: 0, total_spesialis: 0 } };
       }
     }
     
@@ -3309,12 +3251,7 @@
     
     async function upsertRecord(table, data) {
       try {
-        const { data: result, error } = await supabaseClient
-          .from(table)
-          .upsert({ ...data, updated_at: new Date().toISOString() })
-          .select()
-          .single();
-        
+        const { data: result, error } = await supabaseClient.from(table).upsert({ ...data, updated_at: new Date().toISOString() }).select().single();
         if (error) throw error;
         return { success: true, data: result };
       } catch (err) {
@@ -3325,7 +3262,7 @@
     // ==================== INITIALIZE ON LOAD ====================
 
     document.addEventListener('DOMContentLoaded', () => {
-      initParticles();
+      // initParticles is now called inside initApp() to ensure proper order
       initApp();
     });
 
