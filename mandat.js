@@ -9,21 +9,77 @@
  * Configuration: Update SUPABASE_URL and SUPABASE_ANON_KEY below
  */
 
+console.log('🚀 Loading MandaT JavaScript...');
+
+// ============ CRITICAL FUNCTIONS - Define Early for Safety ============
+// These are stubs that will be overwritten later, but prevent "not defined" errors
+
+function openLoginModal() {
+    console.log('🔐 openLoginModal called (stub)');
+    const modal = document.getElementById('loginModal');
+    if (modal) {
+        modal.classList.add('active');
+        setTimeout(() => {
+            const input = document.getElementById('loginUsername');
+            if (input) input.focus();
+        }, 100);
+    }
+}
+
+function closeLoginModal() {
+    const modal = document.getElementById('loginModal');
+    if (modal) modal.classList.remove('active');
+}
+
+function handleLogin(event) {
+    event.preventDefault();
+    alert('Login system loading... Please wait.');
+}
+
+function handleLogout() {
+    localStorage.removeItem('mandat_admin_session');
+    location.reload();
+}
+
+function quickLogin(username, password) {
+    const usernameInput = document.getElementById('loginUsername');
+    const passwordInput = document.getElementById('loginPassword');
+    if (usernameInput && passwordInput) {
+        usernameInput.value = username;
+        passwordInput.value = password;
+        handleLogin(new Event('submit'));
+    }
+}
+
+console.log('✅ Critical function stubs defined');
+
 // ============ SUPABASE CONFIGURATION ============
 // TODO: Replace with your actual Supabase credentials
-const SUPABASE_URL = 'https://ftsqrfqsbhwivyphogbv.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0c3FyZnFzYmh3aXZ5cGhvZ2J2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1NjE0MDQsImV4cCI6MjEwMzEzNzQwNH0.Zb_ukPoJXfDFzfSS--at4CDBK7VI2_-gLU6N7BVnoCs';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
 
 // Initialize Supabase Client
 let supabaseClient = null;
 
 function initSupabase() {
-    if (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log('✅ Supabase initialized successfully');
-        return true;
-    } else {
-        console.warn('⚠️ Supabase not configured. Using demo mode.');
+    try {
+        if (typeof window.supabase === 'undefined' || !window.supabase.createClient) {
+            console.warn('⚠️ Supabase SDK not available. Using demo mode.');
+            initDemoData();
+            return false;
+        }
+        
+        if (SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_ANON_KEY !== 'YOUR_SUPABASE_ANON_KEY') {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('✅ Supabase initialized successfully');
+            return true;
+        } else {
+            console.warn('⚠️ Supabase not configured. Using demo mode.');
+            initDemoData();
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ Supabase init error:', error);
         initDemoData();
         return false;
     }
@@ -80,22 +136,33 @@ const DEMO_USERS = [
  */
 async function handleLogin(event) {
     event.preventDefault();
+    console.log('🔐 Processing login...');
     
-    const username = document.getElementById('loginUsername').value.trim();
-    const password = document.getElementById('loginPassword').value;
+    const usernameInput = document.getElementById('loginUsername');
+    const passwordInput = document.getElementById('loginPassword');
     const loginBtn = document.getElementById('loginBtn');
     const loginError = document.getElementById('loginError');
     const loginErrorMsg = document.getElementById('loginErrorMsg');
     
+    // Validate elements exist
+    if (!usernameInput || !passwordInput || !loginBtn) {
+        console.error('❌ Login form elements not found!');
+        return;
+    }
+    
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+    
     // Disable button and show loading state
     loginBtn.disabled = true;
     loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
-    loginError.classList.remove('show');
+    if (loginError) loginError.classList.remove('show');
     
     try {
         let user = null;
         
         if (supabaseClient) {
+            console.log('📡 Using Supabase authentication...');
             const { data, error } = await supabaseClient
                 .from('users')
                 .select('*')
@@ -107,6 +174,7 @@ async function handleLogin(event) {
             if (error) throw error;
             user = data;
         } else {
+            console.log('🎮 Using demo mode authentication...');
             // Demo mode authentication
             await new Promise(resolve => setTimeout(resolve, 800));
             
@@ -116,6 +184,8 @@ async function handleLogin(event) {
                 throw new Error('INVALID_CREDENTIALS');
             }
         }
+        
+        console.log('✅ Login successful for:', user.nama);
         
         // Set session
         setSession(user);
@@ -127,19 +197,23 @@ async function handleLogin(event) {
         showToast(`Selamat datang, ${user.nama}!`, 'success');
         
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('❌ Login error:', error);
         
-        if (error.message === 'INVALID_CREDENTIALS') {
-            loginErrorMsg.textContent = 'Username atau password salah!';
-        } else {
-            loginErrorMsg.textContent = 'Terjadi kesalahan. Silakan coba lagi.';
+        if (loginErrorMsg) {
+            if (error.message === 'INVALID_CREDENTIALS') {
+                loginErrorMsg.textContent = 'Username atau password salah!';
+            } else {
+                loginErrorMsg.textContent = 'Terjadi kesalahan. Silakan coba lagi.';
+            }
         }
         
-        loginError.classList.add('show');
+        if (loginError) loginError.classList.add('show');
         
         // Re-enable button
-        loginBtn.disabled = false;
-        loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Masuk ke Panel Admin';
+        if (loginBtn) {
+            loginBtn.disabled = false;
+            loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Masuk ke Panel Admin';
+        }
     }
 }
 
@@ -156,17 +230,32 @@ function quickLogin(username, password) {
  * Open login modal
  */
 function openLoginModal() {
-    document.getElementById('loginModal').classList.add('active');
-    document.getElementById('loginUsername').focus();
+    console.log('🔐 Opening login modal...');
+    const modal = document.getElementById('loginModal');
+    if (modal) {
+        modal.classList.add('active');
+        setTimeout(() => {
+            const usernameInput = document.getElementById('loginUsername');
+            if (usernameInput) usernameInput.focus();
+        }, 100);
+    } else {
+        console.error('❌ Login modal element not found!');
+    }
 }
 
 /**
  * Close login modal
  */
 function closeLoginModal() {
-    document.getElementById('loginModal').classList.remove('active');
-    document.getElementById('loginForm').reset();
-    document.getElementById('loginError').classList.remove('show');
+    console.log('🔒 Closing login modal...');
+    const modal = document.getElementById('loginModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
+    const form = document.getElementById('loginForm');
+    if (form) form.reset();
+    const loginError = document.getElementById('loginError');
+    if (loginError) loginError.classList.remove('show');
 }
 
 /**
@@ -264,12 +353,18 @@ function canAccessAdmin(table) {
  * Unlock admin panel after successful login
  */
 function unlockAdminPanel(user) {
+    console.log('🔓 Unlocking admin panel for:', user.nama);
+    
     // Show unlocked state
-    document.getElementById('adminLockedState').style.display = 'none';
-    document.getElementById('adminUnlockedState').style.display = 'block';
+    const lockedState = document.getElementById('adminLockedState');
+    const unlockedState = document.getElementById('adminUnlockedState');
+    
+    if (lockedState) lockedState.style.display = 'none';
+    if (unlockedState) unlockedState.style.display = 'block';
     
     // Show user session bar in sidebar
-    document.getElementById('userSessionBar').classList.add('active');
+    const userSessionBar = document.getElementById('userSessionBar');
+    if (userSessionBar) userSessionBar.classList.add('active');
     
     // Update sidebar user info
     const initial = user.nama.charAt(0).toUpperCase();
@@ -284,48 +379,77 @@ function unlockAdminPanel(user) {
         [ROLES.DOKTER]: 'role-dokter'
     };
     
-    document.getElementById('sessionAvatar').textContent = initial;
-    document.getElementById('sessionName').textContent = user.nama;
-    document.getElementById('sessionRole').textContent = roleLabels[user.role] || user.role;
+    const sessionAvatar = document.getElementById('sessionAvatar');
+    const sessionName = document.getElementById('sessionName');
+    const sessionRole = document.getElementById('sessionRole');
+    
+    if (sessionAvatar) sessionAvatar.textContent = initial;
+    if (sessionName) sessionName.textContent = user.nama;
+    if (sessionRole) sessionRole.textContent = roleLabels[user.role] || user.role;
     
     // Update admin badge
     const adminBadge = document.getElementById('adminRoleBadge');
-    adminBadge.textContent = roleLabels[user.role] || user.role;
-    adminBadge.className = `role-indicator-inline ${roleClasses[user.role] || ''}`;
+    if (adminBadge) {
+        adminBadge.textContent = roleLabels[user.role] || user.role;
+        adminBadge.className = `role-indicator-inline ${roleClasses[user.role] || ''}`;
+    }
     
     // Update topbar - show logged in state
-    document.getElementById('guestBadge').style.display = 'none';
-    document.getElementById('loggedInState').style.display = 'flex';
-    document.getElementById('topbarUserAvatar').textContent = initial;
-    document.getElementById('topbarUserName').textContent = user.nama;
+    const guestBadge = document.getElementById('guestBadge');
+    const loggedInState = document.getElementById('loggedInState');
     
-    const topbarRoleBadge = document.getElementById('topbarUserRole');
-    topbarRoleBadge.textContent = roleLabels[user.role] || user.role;
-    topbarRoleBadge.className = `role-indicator-inline ${roleClasses[user.role] || ''}`;
+    if (guestBadge) guestBadge.style.display = 'none';
+    if (loggedInState) loggedInState.style.display = 'flex';
+    
+    const topbarUserAvatar = document.getElementById('topbarUserAvatar');
+    const topbarUserName = document.getElementById('topbarUserName');
+    const topbarUserRole = document.getElementById('topbarUserRole');
+    
+    if (topbarUserAvatar) topbarUserAvatar.textContent = initial;
+    if (topbarUserName) topbarUserName.textContent = user.nama;
+    
+    if (topbarUserRole) {
+        topbarUserRole.textContent = roleLabels[user.role] || user.role;
+        topbarUserRole.className = `role-indicator-inline ${roleClasses[user.role] || ''}`;
+    }
     
     // Update menu visibility based on role
     updateSidebarPermissions(user.role);
+    
+    console.log('✅ Admin panel unlocked successfully!');
 }
 
 /**
  * Lock admin panel (logout state)
  */
 function lockAdminPanel() {
+    console.log('🔒 Locking admin panel...');
+    
     // Show locked state
-    document.getElementById('adminLockedState').style.display = 'block';
-    document.getElementById('adminUnlockedState').style.display = 'none';
+    const lockedState = document.getElementById('adminLockedState');
+    const unlockedState = document.getElementById('adminUnlockedState');
+    
+    if (lockedState) lockedState.style.display = 'block';
+    if (unlockedState) unlockedState.style.display = 'none';
     
     // Hide user session bar
-    document.getElementById('userSessionBar').classList.remove('active');
+    const userSessionBar = document.getElementById('userSessionBar');
+    if (userSessionBar) userSessionBar.classList.remove('active');
     
     // Update topbar - show guest state
-    document.getElementById('guestBadge').style.display = 'flex';
-    document.getElementById('loggedInState').style.display = 'none';
+    const guestBadge = document.getElementById('guestBadge');
+    const loggedInState = document.getElementById('loggedInState');
+    
+    if (guestBadge) guestBadge.style.display = 'flex';
+    if (loggedInState) loggedInState.style.display = 'none';
     
     // Reset all admin menu items to hidden
-    document.querySelectorAll('#adminUnlockedState .sidebar-menu-item').forEach(item => {
+    const adminMenuItems = document.querySelectorAll('#adminUnlockedState .sidebar-menu-item');
+    adminMenuItems.forEach(item => {
         item.classList.add('hidden-item');
     });
+    
+    console.log('✅ Admin panel locked');
 }
 
 /**

@@ -1495,18 +1495,18 @@
     </div>
 
     <!-- ============ LOGIN MODAL (For Admin Access Only) ============ -->
-    <div class="login-modal-overlay" id="loginModal">
+    <div class="login-modal-overlay" id="loginModal" onclick="if(event.target === this) closeLoginModal()">
         <div class="login-modal">
-            <button class="login-modal-close" onclick="closeLoginModal()">
+            <button class="login-modal-close" onclick="closeLoginModal()" type="button">
                 <i class="fas fa-times"></i>
             </button>
             
             <div class="login-header">
                 <div class="login-header-icon">
-                    <i class="fas fa-lock"></i>
+                    <i class="fas fa-shield-alt"></i>
                 </div>
-                <h2>Login Admin</h2>
-                <p>Masuk untuk mengakses Panel Admin</p>
+                <h2>Login Panel Admin</h2>
+                <p>Masuk untuk mengakses kelola data</p>
             </div>
 
             <form id="loginForm" onsubmit="handleLogin(event)">
@@ -1680,7 +1680,7 @@
                         <h4>Panel Admin Terkunci</h4>
                         <p>Login untuk mengelola data</p>
                     </div>
-                    <button class="btn-login-to-admin" onclick="openLoginModal()">
+                    <button class="btn-login-to-admin" id="btnLoginAdmin" type="button">
                         <i class="fas fa-sign-in-alt"></i> Login Admin
                     </button>
                 </div>
@@ -1797,7 +1797,7 @@
                             <span id="topbarUserName">Admin</span>
                             <span class="role-indicator-inline" id="topbarUserRole" style="margin-left: 8px;">Admin</span>
                         </div>
-                        <button class="btn-admin-logout" onclick="handleLogout()">
+                        <button class="btn-admin-logout" onclick="handleLogout()" type="button" title="Logout dari Panel Admin">
                             <i class="fas fa-sign-out-alt"></i> Logout
                         </button>
                     </div>
@@ -1843,10 +1843,129 @@
     <!-- ============ TOAST CONTAINER ============ -->
     <div class="toast-container" id="toastContainer"></div>
 
-    <!-- Supabase JS SDK -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Supabase JS SDK (with error handling) -->
+    <script>
+        // Fallback if Supabase CDN fails
+        window.supabase = window.supabase || { createClient: () => null };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="console.warn('Supabase SDK failed to load')"></script>
     
-    <!-- Main App JS -->
-    <script src="mandat.js"></script>
+    <!-- Main App JS with fallback -->
+    <script src="mandat.js" onerror="console.error('Failed to load mandat.js!')"></script>
+    
+    <!-- Inline fallback for critical functions (in case JS fails to load) -->
+    <script>
+        // Ensure critical functions exist even if main JS fails
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔧 Setting up inline event listeners as backup...');
+            
+            // Login Admin button - Panel Admin section
+            const btnLoginAdmin = document.getElementById('btnLoginAdmin');
+            if (btnLoginAdmin) {
+                btnLoginAdmin.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log('🔐 Login admin button clicked (inline handler)');
+                    
+                    // Try to call the main function first
+                    if (typeof openLoginModal === 'function') {
+                        openLoginModal();
+                    } else {
+                        // Fallback: show modal directly
+                        const modal = document.getElementById('loginModal');
+                        if (modal) {
+                            modal.classList.add('active');
+                            setTimeout(() => {
+                                const input = document.getElementById('loginUsername');
+                                if (input) input.focus();
+                            }, 100);
+                        }
+                    }
+                });
+                console.log('✅ Login admin button listener attached');
+            }
+            
+            // Login modal close button
+            const loginModalClose = document.querySelector('.login-modal-close');
+            if (loginModalClose) {
+                loginModalClose.addEventListener('click', function() {
+                    if (typeof closeLoginModal === 'function') {
+                        closeLoginModal();
+                    } else {
+                        const modal = document.getElementById('loginModal');
+                        if (modal) modal.classList.remove('active');
+                    }
+                });
+            }
+            
+            // Login form submit
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) {
+                loginForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    if (typeof handleLogin === 'function') {
+                        handleLogin(e);
+                    } else {
+                        alert('Sistem belum siap. Silakan refresh halaman.');
+                    }
+                });
+            }
+            
+            // Logout buttons
+            document.querySelectorAll('.logout-btn-sm, .btn-admin-logout').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (typeof handleLogout === 'function') {
+                        handleLogout();
+                    } else {
+                        alert('Logout: Session cleared.');
+                        localStorage.removeItem('mandat_admin_session');
+                        location.reload();
+                    }
+                });
+            });
+            
+            // Demo account quick login buttons
+            document.querySelectorAll('.demo-account-btn').forEach(function(btn, index) {
+                btn.addEventListener('click', function() {
+                    const accounts = [
+                        { username: 'superadmin', password: 'super123' },
+                        { username: 'operator', password: 'op123' },
+                        { username: 'dokter', password: 'doc123' }
+                    ];
+                    const acc = accounts[index];
+                    if (acc) {
+                        if (typeof quickLogin === 'function') {
+                            quickLogin(acc.username, acc.password);
+                        } else {
+                            // Fallback quick login
+                            const usernameInput = document.getElementById('loginUsername');
+                            const passwordInput = document.getElementById('loginPassword');
+                            if (usernameInput && passwordInput) {
+                                usernameInput.value = acc.username;
+                                passwordInput.value = acc.password;
+                                loginForm.dispatchEvent(new Event('submit'));
+                            }
+                        }
+                    }
+                });
+            });
+            
+            // Login modal overlay click to close
+            const loginModalOverlay = document.getElementById('loginModal');
+            if (loginModalOverlay) {
+                loginModalOverlay.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        if (typeof closeLoginModal === 'function') {
+                            closeLoginModal();
+                        } else {
+                            this.classList.remove('active');
+                        }
+                    }
+                });
+            }
+            
+            console.log('✅ All inline event listeners attached successfully!');
+        });
+    </script>
 </body>
 </html>
